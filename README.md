@@ -1,6 +1,6 @@
 <img src="./github-assets/banner.png" width="500">
 
-# Kiler - Your Digital Cellar
+# Kiler - Your Digital Pantry
 
 **Kiler** is a modern, minimalist "digital cellar" application for Android. It allows you to quickly save and archive various types of content—such as links, text snippets, and images—from any application on your device. With a focus on speed and a fluid user experience, Kiler is the perfect tool for organizing your digital life.
 
