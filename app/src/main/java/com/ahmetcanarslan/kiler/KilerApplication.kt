@@ -7,5 +7,10 @@ import com.ahmetcanarslan.kiler.repository.KilerRepository
 class KilerApplication : Application() {
     
     val database by lazy { KilerDatabase.getDatabase(this) }
-    val repository by lazy { KilerRepository(database.archivedItemDao()) }
+    val repository by lazy { 
+        KilerRepository(
+            database.archivedItemDao(),
+            database.deletedItemDao()
+        )
+    }
 }

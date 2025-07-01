@@ -66,10 +66,7 @@ class ArchiveViewModel(private val repository: KilerRepository) : ViewModel() {
 
     fun deleteItem(item: ArchivedItem) {
         viewModelScope.launch {
-            // The error handling here was incorrect as uiState is a read-only Flow.
-            // A proper implementation would use a separate channel/flow for one-off events like errors.
-            // For now, just calling the repository.
-            repository.deleteItem(item)
+            repository.deleteArchivedItem(item)
         }
     }
 }

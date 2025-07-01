@@ -7,15 +7,15 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 @Database(
-    entities = [ArchivedItem::class],
-    version = 1,
-    exportSchema = false
+    entities = [ArchivedItem::class, DeletedItem::class],
+    version = 2
 )
 @TypeConverters(Converters::class)
 abstract class KilerDatabase : RoomDatabase() {
     
     abstract fun archivedItemDao(): ArchivedItemDao
-    
+    abstract fun deletedItemDao(): DeletedItemDao
+
     companion object {
         @Volatile
         private var INSTANCE: KilerDatabase? = null
@@ -26,7 +26,9 @@ abstract class KilerDatabase : RoomDatabase() {
                     context.applicationContext,
                     KilerDatabase::class.java,
                     "kiler_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // Migration yoksa veritabanını sıfırla
+                .build()
                 INSTANCE = instance
                 instance
             }

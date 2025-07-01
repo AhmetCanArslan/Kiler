@@ -2,6 +2,7 @@ package com.ahmetcanarslan.kiler.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ahmetcanarslan.kiler.data.DeletedItem
 import com.ahmetcanarslan.kiler.repository.KilerRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -19,8 +20,16 @@ class SettingsViewModel(private val repository: KilerRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
     
+    private val _deletedItems = MutableStateFlow<List<DeletedItem>>(emptyList())
+    val deletedItems: StateFlow<List<DeletedItem>> = _deletedItems
+
     init {
         observeTotalItems()
+        viewModelScope.launch {
+            repository.getDeletedItems().collect {
+                _deletedItems.value = it
+            }
+        }
     }
     
     private fun observeTotalItems() {

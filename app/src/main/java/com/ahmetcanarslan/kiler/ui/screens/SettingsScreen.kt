@@ -1,7 +1,10 @@
 package com.ahmetcanarslan.kiler.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,17 +13,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ahmetcanarslan.kiler.data.DeletedItem
 import com.ahmetcanarslan.kiler.ui.theme.KilerTheme
 import com.ahmetcanarslan.kiler.viewmodel.SettingsViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel,
+    viewModel: SettingsViewModel = viewModel(),
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
+    val deletedItems by viewModel.deletedItems.collectAsState()
+    var showDeletedHistory by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -28,7 +37,7 @@ fun SettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -66,7 +75,7 @@ fun SettingsScreen(
                     }
                 }
             }
-            
+
             Card {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -82,7 +91,7 @@ fun SettingsScreen(
                     )
                 }
             }
-            
+
             if (uiState.isExporting) {
                 Card {
                     Row(
@@ -97,14 +106,75 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = { showDeletedHistory = !showDeletedHistory },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (showDeletedHistory) "Hide Deleted Items History" else "Show Deleted Items History")
+            }
+
+            if (showDeletedHistory) {
+                Text(
+                    text = "Deleted Items History",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+                if (deletedItems.isEmpty()) {
+                    Text("No deleted items.", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                    ) {
+                        items(deletedItems) { item ->
+                            DeletedItemHistoryCard(item)
+                        }
+                    }
+                }
+            }
         }
     }
-    
+
     uiState.message?.let { message ->
         LaunchedEffect(message) {
             // Could show a SnackBar with the message
         }
     }
+}
+
+@Composable
+fun DeletedItemHistoryCard(item: DeletedItem) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Type: ${item.contentType}", style = MaterialTheme.typography.bodyMedium)
+            Text("Data: ${item.contentData}", style = MaterialTheme.typography.bodySmall)
+            item.contentPreviewTitle?.let {
+                Text("Title: $it", style = MaterialTheme.typography.bodySmall)
+            }
+            item.contentPreviewImage?.let {
+                Text("Preview Image: $it", style = MaterialTheme.typography.bodySmall)
+            }
+            Text("Source: ${item.sourceApplication}", style = MaterialTheme.typography.bodySmall)
+            Text(
+                "Deleted: ${item.deletedTimestamp.toDateString()}",
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}
+
+private fun Long.toDateString(): String {
+    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    return sdf.format(Date(this))
 }
 
 @Preview
@@ -113,4 +183,20 @@ fun SettingsScreenPreview() {
     KilerTheme {
         // Preview without ViewModel
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DeletedItemHistoryCardPreview() {
+    DeletedItemHistoryCard(
+        DeletedItem(
+            id = 1,
+            contentType = "TEXT",
+            contentData = "Sample deleted text",
+            contentPreviewTitle = "Sample Title",
+            contentPreviewImage = null,
+            sourceApplication = "com.example.app",
+            deletedTimestamp = System.currentTimeMillis()
+        )
+    )
 }
