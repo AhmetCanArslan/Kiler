@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.*
@@ -41,6 +42,7 @@ import java.util.*
 fun ArchivedItemCard(
     item: ArchivedItem,
     onDeleteClick: () -> Unit,
+    onEditClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -184,6 +186,18 @@ fun ArchivedItemCard(
                     )
                 }
             }
+
+            item.note?.takeIf { it.isNotBlank() }?.let { note ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = note,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             
             // Footer
             Row(
@@ -203,6 +217,12 @@ fun ArchivedItemCard(
                 }
                 
                 Row {
+                    IconButton(onClick = onEditClick) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit Note"
+                        )
+                    }
                     IconButton(onClick = { showDeleteDialog = true }) {
                         Icon(
                             Icons.Filled.Delete,
@@ -275,9 +295,11 @@ fun ArchivedItemCardPreview() {
                 contentType = ContentType.TEXT,
                 contentData = "This is a sample text content that was archived from another application.",
                 sourceApplication = "WhatsApp",
-                savedTimestamp = System.currentTimeMillis()
+                savedTimestamp = System.currentTimeMillis(),
+                note = "This is a sample note."
             ),
-            onDeleteClick = {}
+            onDeleteClick = {},
+            onEditClick = {}
         )
     }
 }

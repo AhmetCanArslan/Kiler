@@ -2,11 +2,13 @@ package com.ahmetcanarslan.kiler.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,7 +19,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ahmetcanarslan.kiler.R
+import com.ahmetcanarslan.kiler.data.ArchivedItem
 import com.ahmetcanarslan.kiler.ui.components.ArchivedItemCard
+import com.ahmetcanarslan.kiler.ui.components.EditNoteDialog
 import com.ahmetcanarslan.kiler.ui.theme.KilerTheme
 import com.ahmetcanarslan.kiler.viewmodel.ArchiveViewModel
 import com.ahmetcanarslan.kiler.viewmodel.DateFilter
@@ -27,15 +31,28 @@ import androidx.compose.ui.unit.dp
 
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ArchiveScreen(
     viewModel: ArchiveViewModel,
-    onNavigateToSettings: () -> Unit
+    onNavigateToHistory: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    
+    var showEditDialog by remember { mutableStateOf<ArchivedItem?>(null) }
+
+
+    if (showEditDialog != null) {
+        EditNoteDialog(
+            item = showEditDialog!!,
+            onDismiss = { showEditDialog = null },
+            onSave = { item, note ->
+                viewModel.updateItemNote(item, note)
+                showEditDialog = null
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -50,6 +67,14 @@ fun ArchiveScreen(
                     )
                 },
                 navigationIcon = {
+                    IconButton(onClick = onNavigateToHistory) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "History"
+                        )
+                    }
+                },
+                actions = {
                     IconButton(
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ahmetcanarslan"))
@@ -59,14 +84,6 @@ fun ArchiveScreen(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_github),
                             contentDescription = "GitHub"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
                         )
                     }
                 }
@@ -115,10 +132,17 @@ fun ArchiveScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.items) { item ->
+                    items(
+                        uiState.items,
+                        key = { it.id }
+                    ) { item ->
                         ArchivedItemCard(
+                            modifier = Modifier.animateItemPlacement(
+                                tween(durationMillis = 300)
+                            ),
                             item = item,
-                            onDeleteClick = { viewModel.deleteItem(item) }
+                            onDeleteClick = { viewModel.deleteItem(item) },
+                            onEditClick = { showEditDialog = item }
                         )
                     }
                 }

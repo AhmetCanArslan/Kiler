@@ -14,5 +14,6 @@ data class ArchivedItem(
     val contentPreviewTitle: String? = null,
     val contentPreviewImage: String? = null,
     val sourceApplication: String? = null,
-    val savedTimestamp: Long
+    val savedTimestamp: Long,
+    val note: String? = null
 )

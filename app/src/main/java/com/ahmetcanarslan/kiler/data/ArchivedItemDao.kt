@@ -20,6 +20,9 @@ interface ArchivedItemDao {
     
     @Insert
     suspend fun insertItem(item: ArchivedItem)
+
+    @Update
+    suspend fun updateItem(item: ArchivedItem)
     
     @Delete
     suspend fun deleteItem(item: ArchivedItem)

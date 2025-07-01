@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [ArchivedItem::class, DeletedItem::class],
-    version = 4
+    version = 5
 )
 @TypeConverters(Converters::class)
 abstract class KilerDatabase : RoomDatabase() {

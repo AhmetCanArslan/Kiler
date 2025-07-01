@@ -24,6 +24,12 @@ class KilerRepository(
         }
     }
 
+    suspend fun updateItem(item: ArchivedItem) {
+        withContext(Dispatchers.IO) {
+            archivedItemDao.updateItem(item)
+        }
+    }
+
     suspend fun deleteArchivedItem(item: ArchivedItem) {
         withContext(Dispatchers.IO) {
             val deletedItem = DeletedItem(

@@ -9,12 +9,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.ahmetcanarslan.kiler.ui.screens.ArchiveScreen
-import com.ahmetcanarslan.kiler.ui.screens.SettingsScreen
 import com.ahmetcanarslan.kiler.ui.theme.KilerTheme
 import com.ahmetcanarslan.kiler.viewmodel.ArchiveViewModel
 import com.ahmetcanarslan.kiler.viewmodel.ArchiveViewModelFactory
-import com.ahmetcanarslan.kiler.viewmodel.SettingsViewModel
-import com.ahmetcanarslan.kiler.viewmodel.SettingsViewModelFactory
+import com.ahmetcanarslan.kiler.ui.screens.HistoryScreen
+import com.ahmetcanarslan.kiler.viewmodel.HistoryViewModel
+import com.ahmetcanarslan.kiler.viewmodel.HistoryViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,15 +37,15 @@ class MainActivity : ComponentActivity() {
                         )
                         ArchiveScreen(
                             viewModel = viewModel,
-                            onNavigateToSettings = { navController.navigate("settings") }
+                            onNavigateToHistory = { navController.navigate("history") }
                         )
                     }
 
-                    composable("settings") {
-                        val viewModel: SettingsViewModel = viewModel(
-                            factory = SettingsViewModelFactory(application.repository)
+                    composable("history") {
+                        val viewModel: HistoryViewModel = viewModel(
+                            factory = HistoryViewModelFactory(application.repository)
                         )
-                        SettingsScreen(
+                        HistoryScreen(
                             viewModel = viewModel,
                             onNavigateBack = { navController.popBackStack() }
                         )

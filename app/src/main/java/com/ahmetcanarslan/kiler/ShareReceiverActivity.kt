@@ -10,6 +10,8 @@ import androidx.lifecycle.lifecycleScope
 import com.ahmetcanarslan.kiler.data.ArchivedItem
 import com.ahmetcanarslan.kiler.data.ContentType
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 
@@ -51,7 +53,11 @@ class ShareReceiverActivity : ComponentActivity() {
                                     )
                                 }
                                 
-                                repository.insertItem(item)
+                                val intent = Intent(this@ShareReceiverActivity, SaveNoteActivity::class.java).apply {
+                                    putExtra("item", Json.encodeToString(item))
+                                }
+                                startActivity(intent)
+                                overridePendingTransition(R.anim.slide_in_up, 0)
                                 finish()
                             }
                         } else {
@@ -74,7 +80,11 @@ class ShareReceiverActivity : ComponentActivity() {
                                             sourceApplication = sourceApp,
                                             savedTimestamp = System.currentTimeMillis()
                                         )
-                                        repository.insertItem(item)
+                                        val intent = Intent(this@ShareReceiverActivity, SaveNoteActivity::class.java).apply {
+                                            putExtra("item", Json.encodeToString(item))
+                                        }
+                                        startActivity(intent)
+                                        overridePendingTransition(R.anim.slide_in_up, 0)
                                     }
                                     finish()
                                 }

@@ -53,6 +53,11 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".SaveNoteActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Kiler" />
     </application>
 
 </manifest>

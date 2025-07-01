@@ -69,4 +69,10 @@ class ArchiveViewModel(private val repository: KilerRepository) : ViewModel() {
             repository.deleteArchivedItem(item)
         }
     }
+
+    fun updateItemNote(item: ArchivedItem, note: String) {
+        viewModelScope.launch {
+            repository.updateItem(item.copy(note = note))
+        }
+    }
 }
