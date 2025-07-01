@@ -190,7 +190,7 @@ fun ArchivedItemCard(
             item.note?.takeIf { it.isNotBlank() }?.let { note ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = note,
+                    text = "Note: $note",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
@@ -198,7 +198,7 @@ fun ArchivedItemCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             // Footer
             Row(
                 modifier = Modifier
