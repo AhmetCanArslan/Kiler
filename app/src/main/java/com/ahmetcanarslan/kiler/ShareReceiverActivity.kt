@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.webkit.URLUtil
 import androidx.activity.ComponentActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.ahmetcanarslan.kiler.data.ArchivedItem
 import com.ahmetcanarslan.kiler.data.ContentType
@@ -102,9 +103,13 @@ class ShareReceiverActivity : ComponentActivity() {
                 }
             }
 
-            Uri.fromFile(file)
+            getUriFromFile(file)
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun getUriFromFile(file: File): Uri {
+        return FileProvider.getUriForFile(this, "${applicationContext.packageName}.provider", file)
     }
 }
