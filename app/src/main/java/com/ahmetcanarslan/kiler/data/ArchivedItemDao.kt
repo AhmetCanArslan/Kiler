@@ -12,7 +12,6 @@ interface ArchivedItemDao {
     @Query("""
         SELECT * FROM archived_items 
         WHERE (contentData LIKE '%' || :searchQuery || '%' 
-               OR sourceApplication LIKE '%' || :searchQuery || '%'
                OR contentPreviewTitle LIKE '%' || :searchQuery || '%')
         AND savedTimestamp >= :fromTimestamp
         ORDER BY savedTimestamp DESC

@@ -201,7 +201,10 @@ fun DeletedItemHistoryCard(
                 item.contentPreviewImage?.let {
                     Text("Preview Image: $it", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
-                Text("Source: ${item.sourceApplication}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Saved: ${item.savedTimestamp.toDateString()}",
+                    style = MaterialTheme.typography.labelSmall
+                )
                 Text(
                     "Deleted: ${item.deletedTimestamp.toDateString()}",
                     style = MaterialTheme.typography.labelSmall
@@ -250,6 +253,7 @@ fun DeletedItemHistoryCardPreview() {
             contentPreviewTitle = "Sample Title",
             contentPreviewImage = null,
             sourceApplication = "com.example.app",
+            savedTimestamp = System.currentTimeMillis() - 86400000, // 1 day ago
             deletedTimestamp = System.currentTimeMillis()
         ),
         onRestoreClick = {},

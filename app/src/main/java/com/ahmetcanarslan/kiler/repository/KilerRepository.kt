@@ -32,6 +32,7 @@ class KilerRepository(
                 contentPreviewTitle = item.contentPreviewTitle,
                 contentPreviewImage = item.contentPreviewImage,
                 sourceApplication = item.sourceApplication,
+                savedTimestamp = item.savedTimestamp, // Pass original timestamp
                 deletedTimestamp = System.currentTimeMillis()
             )
             archivedItemDao.deleteItem(item)
@@ -47,7 +48,7 @@ class KilerRepository(
                 contentPreviewTitle = item.contentPreviewTitle,
                 contentPreviewImage = item.contentPreviewImage,
                 sourceApplication = item.sourceApplication,
-                savedTimestamp = System.currentTimeMillis() // Or use original timestamp if stored
+                savedTimestamp = item.savedTimestamp // Restore with original timestamp
             )
             archivedItemDao.insertItem(restoredItem)
             deletedItemDao.delete(item)

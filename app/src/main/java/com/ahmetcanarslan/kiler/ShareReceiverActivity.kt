@@ -25,7 +25,7 @@ class ShareReceiverActivity : ComponentActivity() {
                 when (intent.type) {
                     "text/plain" -> {
                         val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
-                        val sourceApp = getSourceApplication()
+                        val sourceApp = callingPackage
                         
                         if (sharedText != null) {
                             lifecycleScope.launch {
@@ -61,7 +61,7 @@ class ShareReceiverActivity : ComponentActivity() {
                     else -> {
                         if (intent.type?.startsWith("image/") == true) {
                             val imageUri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-                            val sourceApp = getSourceApplication()
+                            val sourceApp = callingPackage
                             
                             if (imageUri != null) {
                                 lifecycleScope.launch {
@@ -90,33 +90,18 @@ class ShareReceiverActivity : ComponentActivity() {
         }
     }
     
-    private fun getSourceApplication(): String {
-        return try {
-            val callingPackage = callingActivity?.packageName
-            if (callingPackage != null) {
-                packageManager.getApplicationLabel(
-                    packageManager.getApplicationInfo(callingPackage, 0)
-                ).toString()
-            } else {
-                "Unknown"
-            }
-        } catch (e: Exception) {
-            "Unknown"
-        }
-    }
-    
     private suspend fun saveImageToInternalStorage(uri: Uri): Uri? {
         return try {
             val inputStream = contentResolver.openInputStream(uri)
             val fileName = "image_${System.currentTimeMillis()}.jpg"
             val file = File(filesDir, fileName)
-            
+
             inputStream?.use { input ->
                 FileOutputStream(file).use { output ->
                     input.copyTo(output)
                 }
             }
-            
+
             Uri.fromFile(file)
         } catch (e: Exception) {
             null

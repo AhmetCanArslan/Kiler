@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 2,
-    "identityHash": "a931d10d3e22c8fe6dbfcb21060693c5",
+    "version": 3,
+    "identityHash": "fd249f49a2a26db2fe2e94dca1a7af6f",
     "entities": [
       {
         "tableName": "archived_items",
@@ -126,7 +126,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a931d10d3e22c8fe6dbfcb21060693c5')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fd249f49a2a26db2fe2e94dca1a7af6f')"
     ]
   }
 }
