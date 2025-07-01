@@ -16,7 +16,7 @@
 
 ## 📸 Screenshots
 
- <img src="./github-assets/main1.png" width="200"> | <img src="./github-assets/main2.png" width="200"> | <img src="./github-assets/main3.png" width="200"> | <img src="./github-assets/main4.png" width="200">
+ <img src="./github-assets/main1.png" width="200"> | <img src="./github-assets/main2.png" width="200"> | <img src="./github-assets/main3.png" width="200"> 
 
 ## 🚀 Usage
 
