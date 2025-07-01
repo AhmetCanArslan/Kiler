@@ -4,44 +4,54 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.ahmetcanarslan.kiler.ui.screens.ArchiveScreen
+import com.ahmetcanarslan.kiler.ui.screens.SettingsScreen
 import com.ahmetcanarslan.kiler.ui.theme.KilerTheme
+import com.ahmetcanarslan.kiler.viewmodel.ArchiveViewModel
+import com.ahmetcanarslan.kiler.viewmodel.ArchiveViewModelFactory
+import com.ahmetcanarslan.kiler.viewmodel.SettingsViewModel
+import com.ahmetcanarslan.kiler.viewmodel.SettingsViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val application = application as KilerApplication
+
         setContent {
             KilerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                val navController = rememberNavController()
+
+                NavHost(
+                    navController = navController,
+                    startDestination = "archive"
+                ) {
+                    composable("archive") {
+                        val viewModel: ArchiveViewModel = viewModel(
+                            factory = ArchiveViewModelFactory(application.repository)
+                        )
+                        ArchiveScreen(
+                            viewModel = viewModel,
+                            onNavigateToSettings = { navController.navigate("settings") }
+                        )
+                    }
+
+                    composable("settings") {
+                        val viewModel: SettingsViewModel = viewModel(
+                            factory = SettingsViewModelFactory(application.repository)
+                        )
+                        SettingsScreen(
+                            viewModel = viewModel,
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    KilerTheme {
-        Greeting("Android")
     }
 }
