@@ -51,6 +51,16 @@ class SettingsViewModel(private val repository: KilerRepository) : ViewModel() {
         }
     }
 
+    fun deleteItemPermanently(item: DeletedItem) {
+        viewModelScope.launch {
+            // Optimistically remove the item from the UI list
+            _deletedItems.update { currentList ->
+                currentList.filterNot { it.id == item.id }
+            }
+            repository.deleteDeletedItemPermanently(item)
+        }
+    }
+
     fun exportData() {
         viewModelScope.launch {
             try {

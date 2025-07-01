@@ -15,4 +15,7 @@ interface DeletedItemDao {
 
     @Delete
     suspend fun delete(item: DeletedItem)
+
+    @Query("DELETE FROM deleted_items WHERE id = :itemId")
+    suspend fun deleteById(itemId: Int)
 }

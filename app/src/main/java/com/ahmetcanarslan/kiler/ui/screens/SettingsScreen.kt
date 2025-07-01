@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -130,10 +131,11 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .weight(1f, fill = false)
                     ) {
-                        items(deletedItems) { item ->
+                        items(deletedItems, key = { it.id }) { item ->
                             DeletedItemHistoryCard(
                                 item = item,
-                                onRestoreClick = { viewModel.restoreItem(item) }
+                                onRestoreClick = { viewModel.restoreItem(item) },
+                                onDeletePermanentlyClick = { viewModel.deleteItemPermanently(item) }
                             )
                         }
                     }
@@ -150,7 +152,36 @@ fun SettingsScreen(
 }
 
 @Composable
-fun DeletedItemHistoryCard(item: DeletedItem, onRestoreClick: () -> Unit) {
+fun DeletedItemHistoryCard(
+    item: DeletedItem,
+    onRestoreClick: () -> Unit,
+    onDeletePermanentlyClick: () -> Unit
+) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Permanently") },
+            text = { Text("Are you sure you want to permanently delete this item? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeletePermanentlyClick()
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -176,11 +207,20 @@ fun DeletedItemHistoryCard(item: DeletedItem, onRestoreClick: () -> Unit) {
                     style = MaterialTheme.typography.labelSmall
                 )
             }
-            IconButton(onClick = onRestoreClick) {
-                Icon(
-                    imageVector = Icons.Default.Restore,
-                    contentDescription = "Restore Item"
-                )
+            Row {
+                IconButton(onClick = onRestoreClick) {
+                    Icon(
+                        imageVector = Icons.Default.Restore,
+                        contentDescription = "Restore Item"
+                    )
+                }
+                IconButton(onClick = { showDeleteDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteForever,
+                        contentDescription = "Delete Permanently",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -212,6 +252,7 @@ fun DeletedItemHistoryCardPreview() {
             sourceApplication = "com.example.app",
             deletedTimestamp = System.currentTimeMillis()
         ),
-        onRestoreClick = {}
+        onRestoreClick = {},
+        onDeletePermanentlyClick = {}
     )
 }

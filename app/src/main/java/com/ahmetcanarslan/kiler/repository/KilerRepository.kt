@@ -54,6 +54,12 @@ class KilerRepository(
         }
     }
 
+    suspend fun deleteDeletedItemPermanently(item: DeletedItem) {
+        withContext(Dispatchers.IO) {
+            deletedItemDao.deleteById(item.id)
+        }
+    }
+
     suspend fun getAllItemsForExport(): List<ArchivedItem> {
         return withContext(Dispatchers.IO) {
             archivedItemDao.getAllItemsForExport()
