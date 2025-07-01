@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -22,6 +21,10 @@ import com.ahmetcanarslan.kiler.ui.components.ArchivedItemCard
 import com.ahmetcanarslan.kiler.ui.theme.KilerTheme
 import com.ahmetcanarslan.kiler.viewmodel.ArchiveViewModel
 import com.ahmetcanarslan.kiler.viewmodel.DateFilter
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,13 +37,19 @@ fun ArchiveScreen(
     val context = LocalContext.current
     
     Scaffold(
-        bottomBar = {
-            BottomAppBar {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.statusBarsPadding().padding(top = 24.dp),
+                title = {
+                    OutlinedTextField(
+                        value = uiState.searchQuery,
+                        onValueChange = viewModel::onSearchQueryChanged,
+                        placeholder = { Text("Search in Kiler...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                },
+                navigationIcon = {
                     IconButton(
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ahmetcanarslan"))
@@ -52,15 +61,8 @@ fun ArchiveScreen(
                             contentDescription = "GitHub"
                         )
                     }
-                    
-                    OutlinedTextField(
-                        value = uiState.searchQuery,
-                        onValueChange = viewModel::onSearchQueryChanged,
-                        placeholder = { Text("Search in Kiler...") },
-                        modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
-                        singleLine = true
-                    )
-                    
+                },
+                actions = {
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -68,7 +70,7 @@ fun ArchiveScreen(
                         )
                     }
                 }
-            }
+            )
         }
     ) { paddingValues ->
         Column(
@@ -76,20 +78,27 @@ fun ArchiveScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            Spacer(modifier = Modifier.height(12.dp))
             // Date filter chips
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center
             ) {
-                items(DateFilter.values().toList()) { filter ->
+                DateFilter.values().forEach { filter ->
                     FilterChip(
+                        modifier = Modifier.padding(horizontal = 2.dp),
                         onClick = { viewModel.onDateFilterChanged(filter) },
                         label = { Text(filter.label) },
-                        selected = uiState.selectedDateFilter == filter
+                        selected = uiState.dateFilter == filter
                     )
                 }
             }
-            
+
+
+
+
             // Content
             if (uiState.items.isEmpty() && !uiState.isLoading) {
                 Box(
@@ -132,3 +141,5 @@ fun ArchiveScreenPreview() {
         // Preview without ViewModel
     }
 }
+
+
