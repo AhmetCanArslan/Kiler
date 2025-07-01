@@ -25,8 +25,9 @@ class HistoryViewModel(private val repository: KilerRepository) : ViewModel() {
         fetchDeletedItems()
     }
 
-    private fun fetchDeletedItems() {
+    fun fetchDeletedItems() {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
             repository.getDeletedItems()
                 .catch { exception ->
                     _uiState.value = _uiState.value.copy(error = exception.message, isLoading = false)
@@ -40,14 +41,14 @@ class HistoryViewModel(private val repository: KilerRepository) : ViewModel() {
     fun restoreItem(item: DeletedItem) {
         viewModelScope.launch {
             repository.restoreDeletedItem(item)
-            // No need to manually refetch, Room's Flow should auto-update.
+            fetchDeletedItems() // Force refresh
         }
     }
 
     fun permanentlyDeleteItem(item: DeletedItem) {
         viewModelScope.launch {
             repository.deleteDeletedItemPermanently(item)
-            // No need to manually refetch, Room's Flow should auto-update.
+            fetchDeletedItems() // Force refresh
         }
     }
 }

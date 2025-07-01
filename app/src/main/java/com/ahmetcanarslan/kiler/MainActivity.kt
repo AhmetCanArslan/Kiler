@@ -15,6 +15,10 @@ import com.ahmetcanarslan.kiler.viewmodel.ArchiveViewModelFactory
 import com.ahmetcanarslan.kiler.ui.screens.HistoryScreen
 import com.ahmetcanarslan.kiler.viewmodel.HistoryViewModel
 import com.ahmetcanarslan.kiler.viewmodel.HistoryViewModelFactory
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,7 +33,9 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = "archive"
+                    startDestination = "archive",
+                    enterTransition = { EnterTransition.None },
+                    exitTransition = { ExitTransition.None }
                 ) {
                     composable("archive") {
                         val viewModel: ArchiveViewModel = viewModel(
@@ -41,7 +47,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    composable("history") {
+                    composable(
+                        "history",
+                        enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                        exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                    ) {
                         val viewModel: HistoryViewModel = viewModel(
                             factory = HistoryViewModelFactory(application.repository)
                         )
