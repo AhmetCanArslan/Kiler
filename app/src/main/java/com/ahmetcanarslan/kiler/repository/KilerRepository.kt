@@ -26,7 +26,6 @@ class KilerRepository(
 
     suspend fun deleteArchivedItem(item: ArchivedItem) {
         withContext(Dispatchers.IO) {
-            archivedItemDao.deleteItem(item)
             val deletedItem = DeletedItem(
                 contentType = item.contentType.name,
                 contentData = item.contentData,
@@ -35,7 +34,23 @@ class KilerRepository(
                 sourceApplication = item.sourceApplication,
                 deletedTimestamp = System.currentTimeMillis()
             )
+            archivedItemDao.deleteItem(item)
             deletedItemDao.insertDeletedItem(deletedItem)
+        }
+    }
+
+    suspend fun restoreDeletedItem(item: DeletedItem) {
+        withContext(Dispatchers.IO) {
+            val restoredItem = ArchivedItem(
+                contentType = ContentType.valueOf(item.contentType),
+                contentData = item.contentData,
+                contentPreviewTitle = item.contentPreviewTitle,
+                contentPreviewImage = item.contentPreviewImage,
+                sourceApplication = item.sourceApplication,
+                savedTimestamp = System.currentTimeMillis() // Or use original timestamp if stored
+            )
+            archivedItemDao.insertItem(restoredItem)
+            deletedItemDao.delete(item)
         }
     }
 

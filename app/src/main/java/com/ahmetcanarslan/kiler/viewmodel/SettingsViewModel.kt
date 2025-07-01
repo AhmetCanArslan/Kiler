@@ -41,6 +41,12 @@ class SettingsViewModel(private val repository: KilerRepository) : ViewModel() {
             .launchIn(viewModelScope)
     }
     
+    fun restoreItem(item: DeletedItem) {
+        viewModelScope.launch {
+            repository.restoreDeletedItem(item)
+        }
+    }
+
     fun exportData() {
         viewModelScope.launch {
             try {

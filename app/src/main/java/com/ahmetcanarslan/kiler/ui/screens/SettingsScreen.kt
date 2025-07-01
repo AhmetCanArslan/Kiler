@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -131,7 +131,10 @@ fun SettingsScreen(
                             .weight(1f, fill = false)
                     ) {
                         items(deletedItems) { item ->
-                            DeletedItemHistoryCard(item)
+                            DeletedItemHistoryCard(
+                                item = item,
+                                onRestoreClick = { viewModel.restoreItem(item) }
+                            )
                         }
                     }
                 }
@@ -147,27 +150,38 @@ fun SettingsScreen(
 }
 
 @Composable
-fun DeletedItemHistoryCard(item: DeletedItem) {
+fun DeletedItemHistoryCard(item: DeletedItem, onRestoreClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("Type: ${item.contentType}", style = MaterialTheme.typography.bodyMedium)
-            Text("Data: ${item.contentData}", style = MaterialTheme.typography.bodySmall)
-            item.contentPreviewTitle?.let {
-                Text("Title: $it", style = MaterialTheme.typography.bodySmall)
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Type: ${item.contentType}", style = MaterialTheme.typography.bodyMedium)
+                Text("Data: ${item.contentData}", style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                item.contentPreviewTitle?.let {
+                    Text("Title: $it", style = MaterialTheme.typography.bodySmall)
+                }
+                item.contentPreviewImage?.let {
+                    Text("Preview Image: $it", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+                Text("Source: ${item.sourceApplication}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Deleted: ${item.deletedTimestamp.toDateString()}",
+                    style = MaterialTheme.typography.labelSmall
+                )
             }
-            item.contentPreviewImage?.let {
-                Text("Preview Image: $it", style = MaterialTheme.typography.bodySmall)
+            IconButton(onClick = onRestoreClick) {
+                Icon(
+                    imageVector = Icons.Default.Restore,
+                    contentDescription = "Restore Item"
+                )
             }
-            Text("Source: ${item.sourceApplication}", style = MaterialTheme.typography.bodySmall)
-            Text(
-                "Deleted: ${item.deletedTimestamp.toDateString()}",
-                style = MaterialTheme.typography.labelSmall
-            )
         }
     }
 }
@@ -197,6 +211,7 @@ fun DeletedItemHistoryCardPreview() {
             contentPreviewImage = null,
             sourceApplication = "com.example.app",
             deletedTimestamp = System.currentTimeMillis()
-        )
+        ),
+        onRestoreClick = {}
     )
 }
