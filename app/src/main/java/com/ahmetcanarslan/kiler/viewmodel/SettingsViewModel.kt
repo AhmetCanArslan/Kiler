@@ -43,6 +43,10 @@ class SettingsViewModel(private val repository: KilerRepository) : ViewModel() {
     
     fun restoreItem(item: DeletedItem) {
         viewModelScope.launch {
+            // Optimistically remove the item from the UI list to prevent multiple clicks
+            _deletedItems.update { currentList ->
+                currentList.filterNot { it.id == item.id }
+            }
             repository.restoreDeletedItem(item)
         }
     }
