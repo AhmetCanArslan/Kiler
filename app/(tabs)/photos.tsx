@@ -12,7 +12,7 @@ import {
 } from "react-native";
 
 const { width } = Dimensions.get("window");
-const imageSize = (width - 60) / 2;
+const imageSize = (width - 75) / 2;
 
 export default function PhotosScreen() {
   const [searchQuery, setSearchQuery] = useState("");
