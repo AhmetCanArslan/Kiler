@@ -34,7 +34,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Welcome back</Text>
+          <Text style={styles.greeting}>Kiler</Text>
           <Text style={styles.subtitle}>Your digital poetry archive</Text>
         </View>
 
