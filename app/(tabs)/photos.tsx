@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     Alert,
+    Animated,
     Dimensions,
     SafeAreaView,
     ScrollView,
@@ -21,6 +22,8 @@ export default function PhotosScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
+  const listAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
   // Load photos when screen comes into focus
   useFocusEffect(
@@ -44,8 +47,36 @@ export default function PhotosScreen() {
   const loadPhotos = async () => {
     try {
       setLoading(true);
+      // Reset animations
+      listAnim.setValue(0);
+      slideAnim.setValue(50);
+      
       const allPhotos = await PhotosService.getAllPhotos();
-      setPhotos(allPhotos);
+      // Sort photos: favorites first, then by updated_at desc
+      const sortedPhotos = allPhotos.sort((a, b) => {
+        // First sort by favorite status (favorites first)
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        // Then sort by updated_at (most recent first)
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      setPhotos(sortedPhotos);
+      
+      // Animate list appearance
+      Animated.parallel([
+        Animated.timing(listAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } catch (error) {
       console.error('Error loading photos:', error);
       Alert.alert('Error', 'Failed to load photos');
@@ -126,42 +157,64 @@ export default function PhotosScreen() {
           </View>
         ) : (
           <View style={styles.photosGrid}>
-            {photos.map((photo) => (
-              <TouchableOpacity key={photo.id} style={styles.photoCard}>
-                <View style={styles.photoPlaceholder}>
-                  <Ionicons name="image" size={32} color="#8E9BA2" />
-                </View>
-                <View style={styles.photoInfo}>
-                  <Text style={styles.photoTitle} numberOfLines={1}>
-                    {photo.title}
-                  </Text>
-                  <Text style={styles.photoDescription} numberOfLines={2}>
-                    {photo.description || "No description"}
-                  </Text>
-                  <View style={styles.photoFooter}>
-                    <View style={styles.tags}>
-                      {(photo.tags || []).slice(0, 2).map((tag, index) => (
-                        <Text key={index} style={styles.tag}>
-                          #{tag}
-                        </Text>
-                      ))}
-                    </View>
-                    <Text style={styles.photoDate}>
-                      {formatDate(photo.taken_at || photo.updated_at || photo.created_at || "")}
-                    </Text>
+            {photos.map((photo, index) => (
+              <Animated.View
+                key={photo.id}
+                style={[
+                  {
+                    opacity: listAnim,
+                    transform: [
+                      {
+                        translateY: slideAnim.interpolate({
+                          inputRange: [0, 50],
+                          outputRange: [0, 50 + index * 10],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <TouchableOpacity style={styles.photoCard}>
+                  <View style={styles.photoPlaceholder}>
+                    <Ionicons name="image" size={32} color="#8E9BA2" />
                   </View>
-                </View>
-                <TouchableOpacity 
-                  style={styles.favoriteButton}
-                  onPress={() => toggleFavorite(photo.id!)}
-                >
-                  <Ionicons 
-                    name={photo.is_favorite ? "heart" : "heart-outline"} 
-                    size={16} 
-                    color={photo.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
-                  />
+                  <View style={styles.photoInfo}>
+                    <Text style={styles.photoTitle} numberOfLines={1}>
+                      {photo.title}
+                    </Text>
+                    <Text style={styles.photoDescription} numberOfLines={2}>
+                      {photo.description || "No description"}
+                    </Text>
+                    <View style={styles.photoFooter}>
+                      <View style={styles.tags}>
+                        {(photo.tags || []).slice(0, 2).map((tag, index) => (
+                          <Text key={index} style={styles.tag}>
+                            #{tag}
+                          </Text>
+                        ))}
+                      </View>
+                      <Text style={styles.photoDate}>
+                        {formatDate(
+                          photo.taken_at ||
+                            photo.updated_at ||
+                            photo.created_at ||
+                            ""
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.favoriteButton}
+                    onPress={() => toggleFavorite(photo.id!)}
+                  >
+                    <Ionicons
+                      name={photo.is_favorite ? "heart" : "heart-outline"}
+                      size={16}
+                      color={photo.is_favorite ? "#FF6B6B" : "#8E9BA2"}
+                    />
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
+              </Animated.View>
             ))}
           </View>
         )}

@@ -24,6 +24,8 @@ export default function NotesScreen() {
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const listAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
   // Load notes when screen comes into focus
   useFocusEffect(
@@ -47,6 +49,10 @@ export default function NotesScreen() {
   const loadNotes = async () => {
     try {
       setLoading(true);
+      // Reset animations
+      listAnim.setValue(0);
+      slideAnim.setValue(50);
+      
       const allNotes = await NotesService.getAllNotes();
       // Sort notes: favorites first, then by updated_at desc
       const sortedNotes = allNotes.sort((a, b) => {
@@ -59,6 +65,20 @@ export default function NotesScreen() {
         return dateB - dateA;
       });
       setNotes(sortedNotes);
+      
+      // Animate list appearance
+      Animated.parallel([
+        Animated.timing(listAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } catch (error) {
       console.error('Error loading notes:', error);
       Alert.alert('Error', 'Failed to load notes');
@@ -200,8 +220,36 @@ export default function NotesScreen() {
             </Text>
           </View>
         ) : (
-          notes.map((note) => (
-            <TouchableOpacity key={note.id} style={styles.noteCard}>
+          <Animated.View
+            style={[
+              {
+                opacity: listAnim,
+                transform: [
+                  {
+                    translateY: slideAnim,
+                  },
+                ],
+              },
+            ]}
+          >
+            {notes.map((note, index) => (
+              <Animated.View
+                key={note.id}
+                style={[
+                  {
+                    opacity: listAnim,
+                    transform: [
+                      {
+                        translateY: slideAnim.interpolate({
+                          inputRange: [0, 50],
+                          outputRange: [0, 50 + index * 10],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <TouchableOpacity style={styles.noteCard}>
               <View style={styles.noteHeader}>
                 <View style={styles.noteIcon}>
                   <Ionicons name="document-text" size={20} color="#68D391" />
@@ -237,8 +285,10 @@ export default function NotesScreen() {
                   ))}
                 </View>
               </View>
-            </TouchableOpacity>
-          ))
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </Animated.View>
         )}
       </ScrollView>
 

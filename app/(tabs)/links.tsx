@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     Alert,
+    Animated,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -17,6 +18,8 @@ export default function LinksScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
+  const listAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
   // Load links when screen comes into focus
   useFocusEffect(
@@ -40,8 +43,36 @@ export default function LinksScreen() {
   const loadLinks = async () => {
     try {
       setLoading(true);
+      // Reset animations
+      listAnim.setValue(0);
+      slideAnim.setValue(50);
+      
       const allLinks = await LinksService.getAllLinks();
-      setLinks(allLinks);
+      // Sort links: favorites first, then by updated_at desc
+      const sortedLinks = allLinks.sort((a, b) => {
+        // First sort by favorite status (favorites first)
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        // Then sort by updated_at (most recent first)
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      setLinks(sortedLinks);
+      
+      // Animate list appearance
+      Animated.parallel([
+        Animated.timing(listAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } catch (error) {
       console.error('Error loading links:', error);
       Alert.alert('Error', 'Failed to load links');
@@ -121,8 +152,36 @@ export default function LinksScreen() {
             </Text>
           </View>
         ) : (
-          links.map((link) => (
-            <TouchableOpacity key={link.id} style={styles.linkCard}>
+          <Animated.View
+            style={[
+              {
+                opacity: listAnim,
+                transform: [
+                  {
+                    translateY: slideAnim,
+                  },
+                ],
+              },
+            ]}
+          >
+            {links.map((link, index) => (
+              <Animated.View
+                key={link.id}
+                style={[
+                  {
+                    opacity: listAnim,
+                    transform: [
+                      {
+                        translateY: slideAnim.interpolate({
+                          inputRange: [0, 50],
+                          outputRange: [0, 50 + index * 10],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <TouchableOpacity style={styles.linkCard}>
               <View style={styles.linkHeader}>
                 <View style={styles.linkIcon}>
                   <Ionicons name="link" size={20} color="#63B3ED" />
@@ -158,7 +217,9 @@ export default function LinksScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
-          ))
+              </Animated.View>
+            ))}
+          </Animated.View>
         )}
       </ScrollView>
     </SafeAreaView>
