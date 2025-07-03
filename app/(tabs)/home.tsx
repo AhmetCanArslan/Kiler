@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
     Alert,
+    Animated,
     Modal,
     SafeAreaView,
     ScrollView,
@@ -16,6 +17,7 @@ export default function HomeScreen() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const recentItems = [
     { id: 1, type: "note", title: "Poetry Collection Ideas", date: "Today" },
@@ -39,6 +41,11 @@ export default function HomeScreen() {
 
   const handleAddNote = () => {
     setShowNoteModal(true);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleSaveNote = () => {
@@ -52,18 +59,30 @@ export default function HomeScreen() {
       {
         text: "OK",
         onPress: () => {
-          setShowNoteModal(false);
-          setNoteTitle("");
-          setNoteContent("");
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => {
+            setShowNoteModal(false);
+            setNoteTitle("");
+            setNoteContent("");
+          });
         },
       },
     ]);
   };
 
   const handleCloseModal = () => {
-    setShowNoteModal(false);
-    setNoteTitle("");
-    setNoteContent("");
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowNoteModal(false);
+      setNoteTitle("");
+      setNoteContent("");
+    });
   };
 
   return (
@@ -141,13 +160,37 @@ export default function HomeScreen() {
 
       {/* Add Note Modal */}
       <Modal
-        animationType="slide"
+        animationType="none"
         transparent={true}
         visible={showNoteModal}
         onRequestClose={handleCloseModal}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+          {/* Fixed backdrop with fade animation */}
+          <Animated.View 
+            style={[
+              styles.backdrop,
+              {
+                opacity: fadeAnim,
+              }
+            ]} 
+          />
+          
+          <Animated.View 
+            style={[
+              styles.modalContent,
+              {
+                transform: [
+                  {
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [300, 0],
+                    }),
+                  },
+                ],
+              }
+            ]}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create Note</Text>
               <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
@@ -183,7 +226,7 @@ export default function HomeScreen() {
                     <Text style={styles.saveButtonText}>Save Note</Text>
                 </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -306,8 +349,15 @@ const styles = StyleSheet.create({
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
+  },
+  backdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
     backgroundColor: "#1A202C",
