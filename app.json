@@ -8,15 +8,18 @@
     "scheme": "kiler",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "description": "Digital poetry archive app for storing links, photos, notes and more",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.canarslan.kiler"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.ahmetcanarslan.kiler"
     },
     "web": {
       "bundler": "metro",
