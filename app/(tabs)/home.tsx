@@ -47,17 +47,29 @@ export default function HomeScreen() {
     collections_count: 0,
   });
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const screenFadeAnim = useRef(new Animated.Value(0)).current;
 
   // Load data on component mount and when screen comes into focus
   useEffect(() => {
     loadData();
+    Animated.timing(screenFadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+      screenFadeAnim.setValue(0);
+      Animated.timing(screenFadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, [screenFadeAnim])
   );
 
   const loadData = async () => {
@@ -194,79 +206,81 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Kiler</Text>
-          <Text style={styles.subtitle}>Your digital poetry archive</Text>
-        </View>
+      <Animated.View style={{ flex: 1, opacity: screenFadeAnim }}>
+        <ScrollView style={styles.content}>
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Kiler</Text>
+            <Text style={styles.subtitle}>Your digital poetry archive</Text>
+          </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="library" size={24} color="#FF6B6B" />
-            <Text style={styles.statNumber}>
-              {stats.notes_count + stats.links_count + stats.photos_count}
-            </Text>
-            <Text style={styles.statLabel}>Total Items</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Ionicons name="library" size={24} color="#FF6B6B" />
+              <Text style={styles.statNumber}>
+                {stats.notes_count + stats.links_count + stats.photos_count}
+              </Text>
+              <Text style={styles.statLabel}>Total Items</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="document-text" size={24} color="#68D391" />
+              <Text style={styles.statNumber}>{stats.notes_count}</Text>
+              <Text style={styles.statLabel}>Notes</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="link" size={24} color="#63B3ED" />
+              <Text style={styles.statNumber}>{stats.links_count}</Text>
+              <Text style={styles.statLabel}>Links</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="images" size={24} color="#F6AD55" />
+              <Text style={styles.statNumber}>{stats.photos_count}</Text>
+              <Text style={styles.statLabel}>Photos</Text>
+            </View>
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="document-text" size={24} color="#68D391" />
-            <Text style={styles.statNumber}>{stats.notes_count}</Text>
-            <Text style={styles.statLabel}>Notes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="link" size={24} color="#63B3ED" />
-            <Text style={styles.statNumber}>{stats.links_count}</Text>
-            <Text style={styles.statLabel}>Links</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="images" size={24} color="#F6AD55" />
-            <Text style={styles.statNumber}>{stats.photos_count}</Text>
-            <Text style={styles.statLabel}>Photos</Text>
-          </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Items</Text>
-          {recentItems.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.itemCard}>
-              <View style={styles.itemIcon}>
-                <Ionicons
-                  name={getIconName(item.type) as any}
-                  size={20}
-                  color="#FF6B6B"
-                />
-              </View>
-              <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.itemDate}>{item.date}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#8E9BA2" />
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]} onPress={handleAddNote}>
-              <Ionicons name="add-circle" size={28} color="#FF6B6B" />
-              <Text style={styles.actionText}>Add Note</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
-              <Ionicons name="camera" size={28} color="#FF6B6B" />
-              <Text style={styles.actionText}>Take Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
-              <Ionicons name="share" size={28} color="#FF6B6B" />
-              <Text style={styles.actionText}>Share Item</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
-              <Ionicons name="search" size={28} color="#FF6B6B" />
-              <Text style={styles.actionText}>Search</Text>
-            </TouchableOpacity>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Items</Text>
+            {recentItems.map((item) => (
+              <TouchableOpacity key={item.id} style={styles.itemCard}>
+                <View style={styles.itemIcon}>
+                  <Ionicons
+                    name={getIconName(item.type) as any}
+                    size={20}
+                    color="#FF6B6B"
+                  />
+                </View>
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  <Text style={styles.itemDate}>{item.date}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#8E9BA2" />
+              </TouchableOpacity>
+            ))}
           </View>
-        </View>
-      </ScrollView>
+
+          <View style={styles.quickActions}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionsGrid}>
+              <TouchableOpacity style={[styles.actionCard, { width: "22%" }]} onPress={handleAddNote}>
+                <Ionicons name="add-circle" size={28} color="#FF6B6B" />
+                <Text style={styles.actionText}>Add Note</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+                <Ionicons name="camera" size={28} color="#FF6B6B" />
+                <Text style={styles.actionText}>Take Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+                <Ionicons name="share" size={28} color="#FF6B6B" />
+                <Text style={styles.actionText}>Share Item</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+                <Ionicons name="search" size={28} color="#FF6B6B" />
+                <Text style={styles.actionText}>Search</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </Animated.View>
 
       {/* Add Note Modal */}
       <Modal

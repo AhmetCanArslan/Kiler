@@ -1,19 +1,49 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useRef, useState } from "react";
 import {
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Animated, Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 export default function AddScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedType, setSelectedType] = useState("");
+  // Home ekranındaki gibi fade animasyonu
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Ekran mount olduğunda ve focus olduğunda animasyonu başlat
+
+  // Her ekrana gelindiğinde animasyon çalışsın
+  useFocusEffect(
+    useCallback(() => {
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, [fadeAnim])
+  );
+
+  // Eğer tab focus animasyonu da istenirse aşağıdaki kodu açabilirsiniz:
+  // import { useFocusEffect } from '@react-navigation/native';
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     fadeAnim.setValue(0);
+  //     require('react-native').Animated.timing(fadeAnim, {
+  //       toValue: 1,
+  //       duration: 400,
+  //       useNativeDriver: true,
+  //     }).start();
+  //   }, [fadeAnim])
+  // );
 
   const addOptions = [
     {
@@ -66,66 +96,68 @@ export default function AddScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Add to Archive</Text>
-        <Text style={styles.subtitle}>Choose what you'd like to add</Text>
-      </View>
-
-      <ScrollView style={styles.content}>
-        <View style={styles.optionsContainer}>
-          {addOptions.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={styles.optionCard}
-              onPress={() => handleOptionPress(option.id)}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: option.color }]}>
-                <Ionicons name={option.icon as any} size={32} color="#fff" />
-              </View>
-              <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <Text style={styles.optionDescription}>{option.description}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#8E9BA2" />
-            </TouchableOpacity>
-          ))}
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Add to Archive</Text>
+          <Text style={styles.subtitle}>Choose what you'd like to add</Text>
         </View>
 
-        <View style={styles.recentSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}>
-              <Ionicons name="copy" size={28} color="#FF6B6B" />
-              <Text style={styles.quickActionText}>Paste from Clipboard</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}>
-              <Ionicons name="mic" size={28} color="#FF6B6B" />
-              <Text style={styles.quickActionText}>Voice Note</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}>
-              <Ionicons name="scan" size={28} color="#FF6B6B" />
-              <Text style={styles.quickActionText}>Scan Text</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}>
-              <Ionicons name="library" size={28} color="#FF6B6B" />
-              <Text style={styles.quickActionText}>From Gallery</Text>
-            </TouchableOpacity>
+        <ScrollView style={styles.content}>
+          <View style={styles.optionsContainer}>
+            {addOptions.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                style={styles.optionCard}
+                onPress={() => handleOptionPress(option.id)}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: option.color }]}> 
+                  <Ionicons name={option.icon as any} size={32} color="#fff" />
+                </View>
+                <View style={styles.optionContent}>
+                  <Text style={styles.optionTitle}>{option.title}</Text>
+                  <Text style={styles.optionDescription}>{option.description}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#8E9BA2" />
+              </TouchableOpacity>
+            ))}
           </View>
-        </View>
-      </ScrollView>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            {renderAddForm()}
+          <View style={styles.recentSection}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.quickActionsGrid}>
+              <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}> 
+                <Ionicons name="copy" size={28} color="#FF6B6B" />
+                <Text style={styles.quickActionText}>Paste from Clipboard</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}> 
+                <Ionicons name="mic" size={28} color="#FF6B6B" />
+                <Text style={styles.quickActionText}>Voice Note</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}> 
+                <Ionicons name="scan" size={28} color="#FF6B6B" />
+                <Text style={styles.quickActionText}>Scan Text</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}> 
+                <Ionicons name="library" size={28} color="#FF6B6B" />
+                <Text style={styles.quickActionText}>From Gallery</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </ScrollView>
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              {renderAddForm()}
+            </View>
+          </View>
+        </Modal>
+      </Animated.View>
     </SafeAreaView>
   );
 }

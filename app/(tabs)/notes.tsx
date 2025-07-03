@@ -2,17 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Note, NotesService } from "../../database/notesService";
 
@@ -27,24 +27,39 @@ export default function NotesScreen() {
   const listAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  // Load notes when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      if (searchQuery.trim()) {
-        searchNotes();
-      } else {
-        loadNotes();
-      }
-    }, [searchQuery])
-  );
 
+  // Fade in animation on mount and focus
   useEffect(() => {
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
     if (searchQuery.trim()) {
       searchNotes();
     } else {
       loadNotes();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+      if (searchQuery.trim()) {
+        searchNotes();
+      } else {
+        loadNotes();
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery])
+  );
 
   const loadNotes = async () => {
     try {
@@ -189,108 +204,111 @@ export default function NotesScreen() {
     });
   };
 
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#8E9BA2" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search notes..."
-            placeholderTextColor="#8E9BA2"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <View style={styles.header}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#8E9BA2" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search notes..."
+              placeholderTextColor="#8E9BA2"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddNote}>
+            <Ionicons name="create" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddNote}>
-          <Ionicons name="create" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
 
-      <ScrollView style={styles.content}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-          </View>
-        ) : notes.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={64} color="#4A5568" />
-            <Text style={styles.emptyTitle}>No Notes Found</Text>
-            <Text style={styles.emptyText}>
-              {searchQuery ? "Try a different search term" : "Start creating your first note"}
-            </Text>
-          </View>
-        ) : (
-          <Animated.View
-            style={[
-              {
-                opacity: listAnim,
-                transform: [
-                  {
-                    translateY: slideAnim,
-                  },
-                ],
-              },
-            ]}
-          >
-            {notes.map((note, index) => (
-              <Animated.View
-                key={note.id}
-                style={[
-                  {
-                    opacity: listAnim,
-                    transform: [
-                      {
-                        translateY: slideAnim.interpolate({
-                          inputRange: [0, 50],
-                          outputRange: [0, 50 + index * 10],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <TouchableOpacity style={styles.noteCard}>
-              <View style={styles.noteHeader}>
-                <View style={styles.noteIcon}>
-                  <Ionicons name="document-text" size={20} color="#68D391" />
-                </View>
-                <View style={styles.noteInfo}>
-                  <Text style={styles.noteTitle}>{note.title}</Text>
-                  <Text style={styles.noteStats}>
-                    {note.word_count || 0} words • {formatDate(note.updated_at || note.created_at || "")}
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  style={styles.favoriteButton}
-                  onPress={() => toggleFavorite(note.id!)}
-                >
-                  <Ionicons 
-                    name={note.is_favorite ? "heart" : "heart-outline"} 
-                    size={18} 
-                    color={note.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
-                  />
-                </TouchableOpacity>
-              </View>
-              
-              <Text style={styles.noteContent} numberOfLines={3}>
-                {note.content}
+        <ScrollView style={styles.content}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+            </View>
+          ) : notes.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="document-text-outline" size={64} color="#4A5568" />
+              <Text style={styles.emptyTitle}>No Notes Found</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery ? "Try a different search term" : "Start creating your first note"}
               </Text>
-              
-              <View style={styles.noteFooter}>
-                <View style={styles.tags}>
-                  {(note.tags || []).map((tag, index) => (
-                    <Text key={index} style={styles.tag}>
-                      #{tag}
+            </View>
+          ) : (
+            <Animated.View
+              style={[
+                {
+                  opacity: listAnim,
+                  transform: [
+                    {
+                      translateY: slideAnim,
+                    },
+                  ],
+                },
+              ]}
+            >
+              {notes.map((note, index) => (
+                <Animated.View
+                  key={note.id}
+                  style={[
+                    {
+                      opacity: listAnim,
+                      transform: [
+                        {
+                          translateY: slideAnim.interpolate({
+                            inputRange: [0, 50],
+                            outputRange: [0, 50 + index * 10],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <TouchableOpacity style={styles.noteCard}>
+                <View style={styles.noteHeader}>
+                  <View style={styles.noteIcon}>
+                    <Ionicons name="document-text" size={20} color="#68D391" />
+                  </View>
+                  <View style={styles.noteInfo}>
+                    <Text style={styles.noteTitle}>{note.title}</Text>
+                    <Text style={styles.noteStats}>
+                      {note.word_count || 0} words • {formatDate(note.updated_at || note.created_at || "")}
                     </Text>
-                  ))}
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.favoriteButton}
+                    onPress={() => toggleFavorite(note.id!)}
+                  >
+                    <Ionicons 
+                      name={note.is_favorite ? "heart" : "heart-outline"} 
+                      size={18} 
+                      color={note.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
+                    />
+                  </TouchableOpacity>
                 </View>
-              </View>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
-          </Animated.View>
-        )}
-      </ScrollView>
+                
+                <Text style={styles.noteContent} numberOfLines={3}>
+                  {note.content}
+                </Text>
+                
+                <View style={styles.noteFooter}>
+                  <View style={styles.tags}>
+                    {(note.tags || []).map((tag, index) => (
+                      <Text key={index} style={styles.tag}>
+                        #{tag}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </Animated.View>
+          )}
+        </ScrollView>
+      </Animated.View>
 
       {/* Add Note Modal */}
       <Modal

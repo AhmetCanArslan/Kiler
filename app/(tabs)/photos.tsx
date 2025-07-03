@@ -2,16 +2,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Dimensions,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Photo, PhotosService } from "../../database/photosService";
 
@@ -25,24 +25,40 @@ export default function PhotosScreen() {
   const listAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  // Load photos when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      if (searchQuery.trim()) {
-        searchPhotos();
-      } else {
-        loadPhotos();
-      }
-    }, [searchQuery])
-  );
 
+  // Fade in animation on mount and focus
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
     if (searchQuery.trim()) {
       searchPhotos();
     } else {
       loadPhotos();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+      if (searchQuery.trim()) {
+        searchPhotos();
+      } else {
+        loadPhotos();
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery])
+  );
 
   const loadPhotos = async () => {
     try {
@@ -125,100 +141,103 @@ export default function PhotosScreen() {
     }
   };
 
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#8E9BA2" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search photos..."
-            placeholderTextColor="#8E9BA2"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <View style={styles.header}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#8E9BA2" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search photos..."
+              placeholderTextColor="#8E9BA2"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          <TouchableOpacity style={styles.addButton}>
+            <Ionicons name="camera" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addButton}>
-          <Ionicons name="camera" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
 
-      <ScrollView style={styles.content}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-          </View>
-        ) : photos.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="camera-outline" size={64} color="#4A5568" />
-            <Text style={styles.emptyTitle}>No Photos Found</Text>
-            <Text style={styles.emptyText}>
-              {searchQuery ? "Try a different search term" : "Start capturing your first photo"}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.photosGrid}>
-            {photos.map((photo, index) => (
-              <Animated.View
-                key={photo.id}
-                style={[
-                  {
-                    opacity: listAnim,
-                    transform: [
-                      {
-                        translateY: slideAnim.interpolate({
-                          inputRange: [0, 50],
-                          outputRange: [0, 50 + index * 10],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <TouchableOpacity style={styles.photoCard}>
-                  <View style={styles.photoPlaceholder}>
-                    <Ionicons name="image" size={32} color="#8E9BA2" />
-                  </View>
-                  <View style={styles.photoInfo}>
-                    <Text style={styles.photoTitle} numberOfLines={1}>
-                      {photo.title}
-                    </Text>
-                    <Text style={styles.photoDescription} numberOfLines={2}>
-                      {photo.description || "No description"}
-                    </Text>
-                    <View style={styles.photoFooter}>
-                      <View style={styles.tags}>
-                        {(photo.tags || []).slice(0, 2).map((tag, index) => (
-                          <Text key={index} style={styles.tag}>
-                            #{tag}
-                          </Text>
-                        ))}
-                      </View>
-                      <Text style={styles.photoDate}>
-                        {formatDate(
-                          photo.taken_at ||
-                            photo.updated_at ||
-                            photo.created_at ||
-                            ""
-                        )}
-                      </Text>
+        <ScrollView style={styles.content}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+            </View>
+          ) : photos.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="camera-outline" size={64} color="#4A5568" />
+              <Text style={styles.emptyTitle}>No Photos Found</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery ? "Try a different search term" : "Start capturing your first photo"}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.photosGrid}>
+              {photos.map((photo, index) => (
+                <Animated.View
+                  key={photo.id}
+                  style={[
+                    {
+                      opacity: listAnim,
+                      transform: [
+                        {
+                          translateY: slideAnim.interpolate({
+                            inputRange: [0, 50],
+                            outputRange: [0, 50 + index * 10],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <TouchableOpacity style={styles.photoCard}>
+                    <View style={styles.photoPlaceholder}>
+                      <Ionicons name="image" size={32} color="#8E9BA2" />
                     </View>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.favoriteButton}
-                    onPress={() => toggleFavorite(photo.id!)}
-                  >
-                    <Ionicons
-                      name={photo.is_favorite ? "heart" : "heart-outline"}
-                      size={16}
-                      color={photo.is_favorite ? "#FF6B6B" : "#8E9BA2"}
-                    />
+                    <View style={styles.photoInfo}>
+                      <Text style={styles.photoTitle} numberOfLines={1}>
+                        {photo.title}
+                      </Text>
+                      <Text style={styles.photoDescription} numberOfLines={2}>
+                        {photo.description || "No description"}
+                      </Text>
+                      <View style={styles.photoFooter}>
+                        <View style={styles.tags}>
+                          {(photo.tags || []).slice(0, 2).map((tag, index) => (
+                            <Text key={index} style={styles.tag}>
+                              #{tag}
+                            </Text>
+                          ))}
+                        </View>
+                        <Text style={styles.photoDate}>
+                          {formatDate(
+                            photo.taken_at ||
+                              photo.updated_at ||
+                              photo.created_at ||
+                              ""
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.favoriteButton}
+                      onPress={() => toggleFavorite(photo.id!)}
+                    >
+                      <Ionicons
+                        name={photo.is_favorite ? "heart" : "heart-outline"}
+                        size={16}
+                        color={photo.is_favorite ? "#FF6B6B" : "#8E9BA2"}
+                      />
+                    </TouchableOpacity>
                   </TouchableOpacity>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+                </Animated.View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
