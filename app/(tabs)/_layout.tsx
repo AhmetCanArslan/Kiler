@@ -4,8 +4,15 @@ import { Tabs } from "expo-router";
 export default function TabLayout() {
   return (
     <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: "#FF6B6B",
+      screenOptions={({ route }) => ({
+        tabBarActiveTintColor:
+          route.name === "notes"
+            ? "#2ee28f"
+            : route.name === "links"
+            ? "#62abf0"
+            : route.name === "photos"
+            ? "#e4a448"
+            : "#FF6B6B",
         tabBarInactiveTintColor: "#8E9BA2",
         tabBarStyle: {
           backgroundColor: "#1A1D23",
@@ -39,7 +46,7 @@ export default function TabLayout() {
           fontWeight: "700",
           fontSize: 18,
         },
-      }}
+      })}
     >
       <Tabs.Screen
         name="home"
@@ -54,8 +61,12 @@ export default function TabLayout() {
         name="notes"
         options={{
           title: "Notes",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name="document-text"
+              size={size}
+              color={focused ? "#2ee28f" : color}
+            />
           ),
         }}
       />
@@ -63,8 +74,12 @@ export default function TabLayout() {
         name="links"
         options={{
           title: "Links",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="link" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name="link"
+              size={size}
+              color={focused ? "#62abf0" : color}
+            />
           ),
         }}
       />
@@ -72,12 +87,15 @@ export default function TabLayout() {
         name="photos"
         options={{
           title: "Photos",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="images" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name="images"
+              size={size}
+              color={focused ? "#fab148" : color}
+            />
           ),
         }}
       />
-      
       <Tabs.Screen
         name="add"
         options={{
