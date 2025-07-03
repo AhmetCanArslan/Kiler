@@ -1,15 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import {
+    Alert,
+    Modal,
     SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
 
 export default function HomeScreen() {
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteContent, setNoteContent] = useState("");
+
   const recentItems = [
     { id: 1, type: "note", title: "Poetry Collection Ideas", date: "Today" },
     { id: 2, type: "link", title: "Modern Poetry Website", date: "Yesterday" },
@@ -28,6 +35,35 @@ export default function HomeScreen() {
       default:
         return "document";
     }
+  };
+
+  const handleAddNote = () => {
+    setShowNoteModal(true);
+  };
+
+  const handleSaveNote = () => {
+    if (!noteTitle.trim() || !noteContent.trim()) {
+      Alert.alert("Error", "Please fill in both title and content");
+      return;
+    }
+
+    // Here you would typically save to your data store
+    Alert.alert("Success", "Note saved successfully!", [
+      {
+        text: "OK",
+        onPress: () => {
+          setShowNoteModal(false);
+          setNoteTitle("");
+          setNoteContent("");
+        },
+      },
+    ]);
+  };
+
+  const handleCloseModal = () => {
+    setShowNoteModal(false);
+    setNoteTitle("");
+    setNoteContent("");
   };
 
   return (
@@ -75,7 +111,7 @@ export default function HomeScreen() {
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 <Text style={styles.itemDate}>{item.date}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#666" />
+              <Ionicons name="chevron-forward" size={16} color="#8E9BA2" />
             </TouchableOpacity>
           ))}
         </View>
@@ -83,7 +119,7 @@ export default function HomeScreen() {
         <View style={styles.quickActions}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]} onPress={handleAddNote}>
               <Ionicons name="add-circle" size={28} color="#FF6B6B" />
               <Text style={styles.actionText}>Add Note</Text>
             </TouchableOpacity>
@@ -102,6 +138,54 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Add Note Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showNoteModal}
+        onRequestClose={handleCloseModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Create Note</Text>
+              <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#8E9BA2" />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.titleInput}
+              placeholder="Note title..."
+              placeholderTextColor="#8E9BA2"
+              value={noteTitle}
+              onChangeText={setNoteTitle}
+              autoFocus={true}
+            />
+
+            <TextInput
+              style={styles.contentInput}
+              placeholder="Write your thoughts, poetry, or ideas..."
+              placeholderTextColor="#8E9BA2"
+              value={noteContent}
+              onChangeText={setNoteContent}
+              multiline
+              numberOfLines={10}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.modalButtons}>
+                <TouchableOpacity style={[styles.cancelButton, { flex: 0.4 }]} onPress={handleCloseModal}>
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveNote}>
+                    <Text style={styles.saveButtonText}>Save Note</Text>
+                </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -218,5 +302,86 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     fontWeight: "500",
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#1A202C",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "80%",
+    borderTopWidth: 1,
+    borderTopColor: "#2D3748",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#F7FAFC",
+  },
+  closeButton: {
+    padding: 4,
+  },
+  titleInput: {
+    backgroundColor: "#2D3748",
+    borderRadius: 12,
+    padding: 15,
+    color: "#F7FAFC",
+    fontSize: 16,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#4A5568",
+  },
+  contentInput: {
+    backgroundColor: "#2D3748",
+    borderRadius: 12,
+    padding: 15,
+    color: "#F7FAFC",
+    fontSize: 16,
+    minHeight: 120,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#4A5568",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#2D3748",
+    borderRadius: 12,
+    padding: 15,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#4A5568",
+  },
+  cancelButtonText: {
+    color: "#A0AEC0",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: "#68D391",
+    borderRadius: 12,
+    padding: 15,
+    alignItems: "center",
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
