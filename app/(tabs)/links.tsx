@@ -111,7 +111,6 @@ export default function LinksScreen() {
       <ScrollView style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading links...</Text>
           </View>
         ) : links.length === 0 ? (
           <View style={styles.emptyContainer}>

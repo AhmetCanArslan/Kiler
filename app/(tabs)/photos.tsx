@@ -115,7 +115,6 @@ export default function PhotosScreen() {
       <ScrollView style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading photos...</Text>
           </View>
         ) : photos.length === 0 ? (
           <View style={styles.emptyContainer}>

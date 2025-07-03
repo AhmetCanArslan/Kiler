@@ -190,7 +190,6 @@ export default function NotesScreen() {
       <ScrollView style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading notes...</Text>
           </View>
         ) : notes.length === 0 ? (
           <View style={styles.emptyContainer}>
