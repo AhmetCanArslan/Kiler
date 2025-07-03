@@ -83,20 +83,20 @@ export default function HomeScreen() {
         <View style={styles.quickActions}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="add-circle" size={32} color="#FF6B6B" />
+            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+              <Ionicons name="add-circle" size={28} color="#FF6B6B" />
               <Text style={styles.actionText}>Add Note</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="camera" size={32} color="#FF6B6B" />
+            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+              <Ionicons name="camera" size={28} color="#FF6B6B" />
               <Text style={styles.actionText}>Take Photo</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="share" size={32} color="#FF6B6B" />
+            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+              <Ionicons name="share" size={28} color="#FF6B6B" />
               <Text style={styles.actionText}>Share Item</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="search" size={32} color="#FF6B6B" />
+            <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+              <Ionicons name="search" size={28} color="#FF6B6B" />
               <Text style={styles.actionText}>Search</Text>
             </TouchableOpacity>
           </View>
