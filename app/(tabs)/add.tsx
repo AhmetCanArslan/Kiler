@@ -21,28 +21,28 @@ export default function AddScreen() {
       title: "Create Note",
       description: "Write poetry, thoughts, or ideas",
       icon: "create",
-      color: "#4CAF50",
+      color: "#68D391",
     },
     {
       id: "link",
       title: "Save Link",
       description: "Bookmark inspiring websites",
       icon: "link",
-      color: "#2196F3",
+      color: "#63B3ED",
     },
     {
       id: "photo",
       title: "Add Photo",
       description: "Capture moments and inspiration",
       icon: "camera",
-      color: "#FF9800",
+      color: "#F6AD55",
     },
     {
       id: "import",
       title: "Import Content",
       description: "Share from other apps",
       icon: "share",
-      color: "#9C27B0",
+      color: "#D53F8C",
     },
   ];
 
@@ -86,7 +86,7 @@ export default function AddScreen() {
                 <Text style={styles.optionTitle}>{option.title}</Text>
                 <Text style={styles.optionDescription}>{option.description}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
+              <Ionicons name="chevron-forward" size={20} color="#8E9BA2" />
             </TouchableOpacity>
           ))}
         </View>
@@ -95,19 +95,19 @@ export default function AddScreen() {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsGrid}>
             <TouchableOpacity style={styles.quickAction}>
-              <Ionicons name="copy" size={24} color="#e94560" />
+              <Ionicons name="copy" size={24} color="#FF6B6B" />
               <Text style={styles.quickActionText}>Paste from Clipboard</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction}>
-              <Ionicons name="mic" size={24} color="#e94560" />
+              <Ionicons name="mic" size={24} color="#FF6B6B" />
               <Text style={styles.quickActionText}>Voice Note</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction}>
-              <Ionicons name="scan" size={24} color="#e94560" />
+              <Ionicons name="scan" size={24} color="#FF6B6B" />
               <Text style={styles.quickActionText}>Scan Text</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction}>
-              <Ionicons name="library" size={24} color="#e94560" />
+              <Ionicons name="library" size={24} color="#FF6B6B" />
               <Text style={styles.quickActionText}>From Gallery</Text>
             </TouchableOpacity>
           </View>
@@ -136,18 +136,18 @@ const NoteForm = ({ onClose }: { onClose: () => void }) => (
     <View style={styles.formHeader}>
       <Text style={styles.formTitle}>Create Note</Text>
       <TouchableOpacity onPress={onClose}>
-        <Ionicons name="close" size={24} color="#666" />
+        <Ionicons name="close" size={24} color="#8E9BA2" />
       </TouchableOpacity>
     </View>
     <TextInput
       style={styles.titleInput}
       placeholder="Note title..."
-      placeholderTextColor="#666"
+      placeholderTextColor="#8E9BA2"
     />
     <TextInput
       style={styles.contentInput}
       placeholder="Write your thoughts, poetry, or ideas..."
-      placeholderTextColor="#666"
+      placeholderTextColor="#8E9BA2"
       multiline
       numberOfLines={10}
     />
@@ -162,23 +162,23 @@ const LinkForm = ({ onClose }: { onClose: () => void }) => (
     <View style={styles.formHeader}>
       <Text style={styles.formTitle}>Save Link</Text>
       <TouchableOpacity onPress={onClose}>
-        <Ionicons name="close" size={24} color="#666" />
+        <Ionicons name="close" size={24} color="#8E9BA2" />
       </TouchableOpacity>
     </View>
     <TextInput
       style={styles.titleInput}
       placeholder="Link title..."
-      placeholderTextColor="#666"
+      placeholderTextColor="#8E9BA2"
     />
     <TextInput
       style={styles.titleInput}
       placeholder="URL..."
-      placeholderTextColor="#666"
+      placeholderTextColor="#8E9BA2"
     />
     <TextInput
       style={styles.contentInput}
       placeholder="Description (optional)..."
-      placeholderTextColor="#666"
+      placeholderTextColor="#8E9BA2"
       multiline
       numberOfLines={4}
     />
@@ -193,16 +193,16 @@ const PhotoForm = ({ onClose }: { onClose: () => void }) => (
     <View style={styles.formHeader}>
       <Text style={styles.formTitle}>Add Photo</Text>
       <TouchableOpacity onPress={onClose}>
-        <Ionicons name="close" size={24} color="#666" />
+        <Ionicons name="close" size={24} color="#8E9BA2" />
       </TouchableOpacity>
     </View>
     <View style={styles.photoOptions}>
       <TouchableOpacity style={styles.photoOption}>
-        <Ionicons name="camera" size={32} color="#e94560" />
+        <Ionicons name="camera" size={32} color="#FF6B6B" />
         <Text style={styles.photoOptionText}>Take Photo</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.photoOption}>
-        <Ionicons name="library" size={32} color="#e94560" />
+        <Ionicons name="library" size={32} color="#FF6B6B" />
         <Text style={styles.photoOptionText}>Choose from Gallery</Text>
       </TouchableOpacity>
     </View>
@@ -212,7 +212,7 @@ const PhotoForm = ({ onClose }: { onClose: () => void }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f0f23",
+    backgroundColor: "#0F1419",
   },
   header: {
     paddingHorizontal: 20,
@@ -221,12 +221,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
-    color: "#a0a0a0",
+    color: "#A0AEC0",
   },
   content: {
     flex: 1,
@@ -236,12 +236,14 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   optionCard: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: 12,
+    backgroundColor: "#1A202C",
+    borderRadius: 16,
     padding: 20,
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#2D3748",
   },
   optionIcon: {
     width: 60,
@@ -257,12 +259,12 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginBottom: 4,
   },
   optionDescription: {
     fontSize: 14,
-    color: "#a0a0a0",
+    color: "#A0AEC0",
   },
   recentSection: {
     marginBottom: 30,
@@ -270,7 +272,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: "600",
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginBottom: 15,
   },
   quickActionsGrid: {
@@ -279,15 +281,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   quickAction: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: 12,
+    backgroundColor: "#1A202C",
+    borderRadius: 16,
     padding: 20,
     alignItems: "center",
     width: "48%",
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#2D3748",
   },
   quickActionText: {
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginTop: 8,
     fontSize: 14,
     fontWeight: "500",
@@ -299,7 +303,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#1A202C",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     minHeight: "60%",
@@ -316,28 +320,32 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 20,
     fontWeight: "600",
-    color: "#f5f5f5",
+    color: "#F7FAFC",
   },
   titleInput: {
-    backgroundColor: "#333",
-    borderRadius: 8,
+    backgroundColor: "#2D3748",
+    borderRadius: 12,
     padding: 15,
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     fontSize: 16,
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#4A5568",
   },
   contentInput: {
-    backgroundColor: "#333",
-    borderRadius: 8,
+    backgroundColor: "#2D3748",
+    borderRadius: 12,
     padding: 15,
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     fontSize: 16,
     textAlignVertical: "top",
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#4A5568",
   },
   saveButton: {
-    backgroundColor: "#e94560",
-    borderRadius: 10,
+    backgroundColor: "#FF6B6B",
+    borderRadius: 12,
     padding: 15,
     alignItems: "center",
   },
@@ -356,7 +364,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   photoOptionText: {
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginTop: 10,
     fontSize: 16,
   },

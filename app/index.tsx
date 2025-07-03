@@ -27,7 +27,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#0F1419",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -38,29 +38,29 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 48,
     fontWeight: "bold",
-    color: "#e94560",
+    color: "#FF6B6B",
     marginBottom: 10,
     letterSpacing: 2,
   },
   subtitle: {
     fontSize: 18,
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginBottom: 30,
     fontWeight: "300",
   },
   description: {
     fontSize: 16,
-    color: "#a0a0a0",
+    color: "#A0AEC0",
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 50,
   },
   startButton: {
-    backgroundColor: "#e94560",
+    backgroundColor: "#FF6B6B",
     paddingHorizontal: 40,
     paddingVertical: 15,
     borderRadius: 25,
-    shadowColor: "#e94560",
+    shadowColor: "#FF6B6B",
     shadowOffset: {
       width: 0,
       height: 4,

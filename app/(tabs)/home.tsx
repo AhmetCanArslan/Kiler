@@ -40,22 +40,22 @@ export default function HomeScreen() {
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Ionicons name="library" size={24} color="#e94560" />
+            <Ionicons name="library" size={24} color="#FF6B6B" />
             <Text style={styles.statNumber}>24</Text>
             <Text style={styles.statLabel}>Total Items</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="document-text" size={24} color="#4CAF50" />
+            <Ionicons name="document-text" size={24} color="#68D391" />
             <Text style={styles.statNumber}>12</Text>
             <Text style={styles.statLabel}>Notes</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="link" size={24} color="#2196F3" />
+            <Ionicons name="link" size={24} color="#63B3ED" />
             <Text style={styles.statNumber}>8</Text>
             <Text style={styles.statLabel}>Links</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="images" size={24} color="#FF9800" />
+            <Ionicons name="images" size={24} color="#F6AD55" />
             <Text style={styles.statNumber}>4</Text>
             <Text style={styles.statLabel}>Photos</Text>
           </View>
@@ -65,12 +65,11 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Recent Items</Text>
           {recentItems.map((item) => (
             <TouchableOpacity key={item.id} style={styles.itemCard}>
-              <View style={styles.itemIcon}>
-                <Ionicons
-                  name={getIconName(item.type) as any}
-                  size={20}
-                  color="#e94560"
-                />
+              <View style={styles.itemIcon}>              <Ionicons
+                name={getIconName(item.type) as any}
+                size={20}
+                color="#FF6B6B"
+              />
               </View>
               <View style={styles.itemContent}>
                 <Text style={styles.itemTitle}>{item.title}</Text>
@@ -85,19 +84,19 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="add-circle" size={32} color="#e94560" />
+              <Ionicons name="add-circle" size={32} color="#FF6B6B" />
               <Text style={styles.actionText}>Add Note</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="camera" size={32} color="#e94560" />
+              <Ionicons name="camera" size={32} color="#FF6B6B" />
               <Text style={styles.actionText}>Take Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="share" size={32} color="#e94560" />
+              <Ionicons name="share" size={32} color="#FF6B6B" />
               <Text style={styles.actionText}>Share Item</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="search" size={32} color="#e94560" />
+              <Ionicons name="search" size={32} color="#FF6B6B" />
               <Text style={styles.actionText}>Search</Text>
             </TouchableOpacity>
           </View>
@@ -110,7 +109,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f0f23",
+    backgroundColor: "#0F1419",
   },
   content: {
     flex: 1,
@@ -122,12 +121,12 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
-    color: "#a0a0a0",
+    color: "#A0AEC0",
   },
   statsContainer: {
     flexDirection: "row",
@@ -135,22 +134,24 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   statCard: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: 12,
+    backgroundColor: "#1A202C",
+    borderRadius: 16,
     padding: 15,
     alignItems: "center",
     flex: 1,
     marginHorizontal: 3,
+    borderWidth: 1,
+    borderColor: "#2D3748",
   },
   statNumber: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginTop: 8,
   },
   statLabel: {
     fontSize: 12,
-    color: "#a0a0a0",
+    color: "#A0AEC0",
     marginTop: 4,
   },
   section: {
@@ -159,22 +160,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: "600",
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginBottom: 15,
   },
   itemCard: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: 12,
+    backgroundColor: "#1A202C",
+    borderRadius: 16,
     padding: 15,
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#2D3748",
   },
   itemIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#e94560",
+    backgroundColor: "#FF6B6B",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
@@ -184,12 +187,12 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontSize: 16,
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     fontWeight: "500",
   },
   itemDate: {
     fontSize: 14,
-    color: "#a0a0a0",
+    color: "#A0AEC0",
     marginTop: 2,
   },
   quickActions: {
@@ -201,15 +204,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   actionCard: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: 12,
+    backgroundColor: "#1A202C",
+    borderRadius: 16,
     padding: 20,
     alignItems: "center",
     width: "48%",
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#2D3748",
   },
   actionText: {
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginTop: 8,
     fontSize: 14,
     fontWeight: "500",

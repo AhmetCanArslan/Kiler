@@ -52,11 +52,11 @@ export default function NotesScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" />
+          <Ionicons name="search" size={20} color="#8E9BA2" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search notes..."
-            placeholderTextColor="#666"
+            placeholderTextColor="#8E9BA2"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -71,7 +71,7 @@ export default function NotesScreen() {
           <TouchableOpacity key={note.id} style={styles.noteCard}>
             <View style={styles.noteHeader}>
               <View style={styles.noteIcon}>
-                <Ionicons name="document-text" size={20} color="#4CAF50" />
+                <Ionicons name="document-text" size={20} color="#68D391" />
               </View>
               <View style={styles.noteInfo}>
                 <Text style={styles.noteTitle}>{note.title}</Text>
@@ -80,7 +80,7 @@ export default function NotesScreen() {
                 </Text>
               </View>
               <TouchableOpacity style={styles.shareButton}>
-                <Ionicons name="share" size={18} color="#666" />
+                <Ionicons name="share" size={18} color="#8E9BA2" />
               </TouchableOpacity>
             </View>
             
@@ -107,7 +107,7 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f0f23",
+    backgroundColor: "#0F1419",
   },
   header: {
     flexDirection: "row",
@@ -119,21 +119,23 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1a1a2e",
-    borderRadius: 10,
+    backgroundColor: "#1A202C",
+    borderRadius: 12,
     paddingHorizontal: 15,
     marginRight: 10,
+    borderWidth: 1,
+    borderColor: "#2D3748",
   },
   searchInput: {
     flex: 1,
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     fontSize: 16,
     marginLeft: 10,
     height: 45,
   },
   addButton: {
-    backgroundColor: "#e94560",
-    borderRadius: 10,
+    backgroundColor: "#FF6B6B",
+    borderRadius: 12,
     width: 45,
     height: 45,
     justifyContent: "center",
@@ -144,10 +146,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   noteCard: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: 12,
+    backgroundColor: "#1A202C",
+    borderRadius: 16,
     padding: 15,
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#2D3748",
   },
   noteHeader: {
     flexDirection: "row",
@@ -158,7 +162,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#68D391",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -169,19 +173,19 @@ const styles = StyleSheet.create({
   noteTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#f5f5f5",
+    color: "#F7FAFC",
     marginBottom: 4,
   },
   noteStats: {
     fontSize: 12,
-    color: "#666",
+    color: "#8E9BA2",
   },
   shareButton: {
     padding: 8,
   },
   noteContent: {
     fontSize: 14,
-    color: "#a0a0a0",
+    color: "#A0AEC0",
     lineHeight: 22,
     marginBottom: 12,
     fontStyle: "italic",
@@ -197,7 +201,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tag: {
-    color: "#4CAF50",
+    color: "#68D391",
     fontSize: 12,
     marginRight: 8,
     marginBottom: 2,
