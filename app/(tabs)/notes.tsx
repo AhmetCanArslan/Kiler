@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+    Alert,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -9,44 +10,77 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { Note, NotesService } from "../../database/notesService";
 
 export default function NotesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  
-  const notes = [
-    {
-      id: 1,
-      title: "Morning Thoughts",
-      content: "The way the light breaks through the curtains reminds me of hope finding its way through darkness...",
-      tags: ["morning", "light", "hope"],
-      date: "Today",
-      wordCount: 156,
-    },
-    {
-      id: 2,
-      title: "City Symphony",
-      content: "Cars humming melodies on asphalt strings, horns creating jazz in the urban evening...",
-      tags: ["city", "music", "evening"],
-      date: "Yesterday",
-      wordCount: 89,
-    },
-    {
-      id: 3,
-      title: "Ocean Memory",
-      content: "Salt air carries stories of distant shores, waves whisper secrets to the listening sand...",
-      tags: ["ocean", "memory", "nature"],
-      date: "3 days ago",
-      wordCount: 234,
-    },
-    {
-      id: 4,
-      title: "Winter's Last Breath",
-      content: "Frost melting into spring's warm embrace, each droplet a promise of renewal...",
-      tags: ["winter", "spring", "renewal"],
-      date: "1 week ago",
-      wordCount: 78,
-    },
-  ];
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadNotes();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      searchNotes();
+    } else {
+      loadNotes();
+    }
+  }, [searchQuery]);
+
+  const loadNotes = async () => {
+    try {
+      setLoading(true);
+      const allNotes = await NotesService.getAllNotes();
+      setNotes(allNotes);
+    } catch (error) {
+      console.error('Error loading notes:', error);
+      Alert.alert('Error', 'Failed to load notes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchNotes = async () => {
+    try {
+      setLoading(true);
+      const searchResults = await NotesService.searchNotes(searchQuery.trim());
+      setNotes(searchResults);
+    } catch (error) {
+      console.error('Error searching notes:', error);
+      Alert.alert('Error', 'Failed to search notes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  const toggleFavorite = async (noteId: number) => {
+    try {
+      await NotesService.toggleFavorite(noteId);
+      // Refresh the notes to show updated favorite status
+      if (searchQuery.trim()) {
+        searchNotes();
+      } else {
+        loadNotes();
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite status');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,38 +101,59 @@ export default function NotesScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {notes.map((note) => (
-          <TouchableOpacity key={note.id} style={styles.noteCard}>
-            <View style={styles.noteHeader}>
-              <View style={styles.noteIcon}>
-                <Ionicons name="document-text" size={20} color="#68D391" />
-              </View>
-              <View style={styles.noteInfo}>
-                <Text style={styles.noteTitle}>{note.title}</Text>
-                <Text style={styles.noteStats}>
-                  {note.wordCount} words • {note.date}
-                </Text>
-              </View>
-              <TouchableOpacity style={styles.shareButton}>
-                <Ionicons name="share" size={18} color="#8E9BA2" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.noteContent} numberOfLines={3}>
-              {note.content}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading notes...</Text>
+          </View>
+        ) : notes.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="document-text-outline" size={64} color="#4A5568" />
+            <Text style={styles.emptyTitle}>No Notes Found</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery ? "Try a different search term" : "Start creating your first note"}
             </Text>
-            
-            <View style={styles.noteFooter}>
-              <View style={styles.tags}>
-                {note.tags.map((tag, index) => (
-                  <Text key={index} style={styles.tag}>
-                    #{tag}
+          </View>
+        ) : (
+          notes.map((note) => (
+            <TouchableOpacity key={note.id} style={styles.noteCard}>
+              <View style={styles.noteHeader}>
+                <View style={styles.noteIcon}>
+                  <Ionicons name="document-text" size={20} color="#68D391" />
+                </View>
+                <View style={styles.noteInfo}>
+                  <Text style={styles.noteTitle}>{note.title}</Text>
+                  <Text style={styles.noteStats}>
+                    {note.word_count || 0} words • {formatDate(note.updated_at || note.created_at || "")}
                   </Text>
-                ))}
+                </View>
+                <TouchableOpacity 
+                  style={styles.favoriteButton}
+                  onPress={() => toggleFavorite(note.id!)}
+                >
+                  <Ionicons 
+                    name={note.is_favorite ? "heart" : "heart-outline"} 
+                    size={18} 
+                    color={note.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
+                  />
+                </TouchableOpacity>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+              
+              <Text style={styles.noteContent} numberOfLines={3}>
+                {note.content}
+              </Text>
+              
+              <View style={styles.noteFooter}>
+                <View style={styles.tags}>
+                  {(note.tags || []).map((tag, index) => (
+                    <Text key={index} style={styles.tag}>
+                      #{tag}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -182,6 +237,37 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     padding: 8,
+  },
+  favoriteButton: {
+    padding: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 50,
+  },
+  loadingText: {
+    color: "#A0AEC0",
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#A0AEC0",
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#8E9BA2",
+    textAlign: "center",
   },
   noteContent: {
     fontSize: 14,

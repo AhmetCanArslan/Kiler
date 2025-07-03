@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+    Alert,
     Dimensions,
     SafeAreaView,
     ScrollView,
@@ -10,43 +11,80 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { Photo, PhotosService } from "../../database/photosService";
 
 const { width } = Dimensions.get("window");
 const imageSize = (width - 75) / 2;
 
 export default function PhotosScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  
-  const photos = [
-    {
-      id: 1,
-      title: "Sunset Poetry",
-      description: "Beautiful sunset that inspired my latest poem",
-      tags: ["nature", "inspiration"],
-      date: "Today",
-    },
-    {
-      id: 2,
-      title: "Old Library",
-      description: "Ancient books and stories",
-      tags: ["books", "library"],
-      date: "2 days ago",
-    },
-    {
-      id: 3,
-      title: "Ocean Waves",
-      description: "The rhythm of the sea",
-      tags: ["ocean", "waves", "rhythm"],
-      date: "1 week ago",
-    },
-    {
-      id: 4,
-      title: "City Lights",
-      description: "Urban poetry in motion",
-      tags: ["city", "lights", "urban"],
-      date: "2 weeks ago",
-    },
-  ];
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPhotos();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      searchPhotos();
+    } else {
+      loadPhotos();
+    }
+  }, [searchQuery]);
+
+  const loadPhotos = async () => {
+    try {
+      setLoading(true);
+      const allPhotos = await PhotosService.getAllPhotos();
+      setPhotos(allPhotos);
+    } catch (error) {
+      console.error('Error loading photos:', error);
+      Alert.alert('Error', 'Failed to load photos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchPhotos = async () => {
+    try {
+      setLoading(true);
+      const searchResults = await PhotosService.searchPhotos(searchQuery.trim());
+      setPhotos(searchResults);
+    } catch (error) {
+      console.error('Error searching photos:', error);
+      Alert.alert('Error', 'Failed to search photos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  const toggleFavorite = async (photoId: number) => {
+    try {
+      await PhotosService.toggleFavorite(photoId);
+      // Refresh the photos to show updated favorite status
+      if (searchQuery.trim()) {
+        searchPhotos();
+      } else {
+        loadPhotos();
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite status');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,36 +105,59 @@ export default function PhotosScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        <View style={styles.photosGrid}>
-          {photos.map((photo) => (
-            <TouchableOpacity key={photo.id} style={styles.photoCard}>
-              <View style={styles.photoPlaceholder}>
-                <Ionicons name="image" size={32} color="#8E9BA2" />
-              </View>
-              <View style={styles.photoInfo}>
-                <Text style={styles.photoTitle} numberOfLines={1}>
-                  {photo.title}
-                </Text>
-                <Text style={styles.photoDescription} numberOfLines={2}>
-                  {photo.description}
-                </Text>
-                <View style={styles.photoFooter}>
-                  <View style={styles.tags}>
-                    {photo.tags.slice(0, 2).map((tag, index) => (
-                      <Text key={index} style={styles.tag}>
-                        {tag}
-                      </Text>
-                    ))}
-                  </View>
-                  <Text style={styles.photoDate}>{photo.date}</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading photos...</Text>
+          </View>
+        ) : photos.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="camera-outline" size={64} color="#4A5568" />
+            <Text style={styles.emptyTitle}>No Photos Found</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery ? "Try a different search term" : "Start capturing your first photo"}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.photosGrid}>
+            {photos.map((photo) => (
+              <TouchableOpacity key={photo.id} style={styles.photoCard}>
+                <View style={styles.photoPlaceholder}>
+                  <Ionicons name="image" size={32} color="#8E9BA2" />
                 </View>
-              </View>
-              <TouchableOpacity style={styles.shareButton}>
-                <Ionicons name="share" size={16} color="#8E9BA2" />
+                <View style={styles.photoInfo}>
+                  <Text style={styles.photoTitle} numberOfLines={1}>
+                    {photo.title}
+                  </Text>
+                  <Text style={styles.photoDescription} numberOfLines={2}>
+                    {photo.description || "No description"}
+                  </Text>
+                  <View style={styles.photoFooter}>
+                    <View style={styles.tags}>
+                      {(photo.tags || []).slice(0, 2).map((tag, index) => (
+                        <Text key={index} style={styles.tag}>
+                          #{tag}
+                        </Text>
+                      ))}
+                    </View>
+                    <Text style={styles.photoDate}>
+                      {formatDate(photo.taken_at || photo.updated_at || photo.created_at || "")}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity 
+                  style={styles.favoriteButton}
+                  onPress={() => toggleFavorite(photo.id!)}
+                >
+                  <Ionicons 
+                    name={photo.is_favorite ? "heart" : "heart-outline"} 
+                    size={16} 
+                    color={photo.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
+                  />
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -210,5 +271,41 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: 12,
     padding: 6,
+  },
+  favoriteButton: {
+    position: "absolute",
+    top: 8,
+    right: 38,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 12,
+    padding: 6,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 50,
+  },
+  loadingText: {
+    color: "#A0AEC0",
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#A0AEC0",
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#8E9BA2",
+    textAlign: "center",
   },
 });

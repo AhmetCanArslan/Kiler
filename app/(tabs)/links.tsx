@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+    Alert,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -9,36 +10,77 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { Link, LinksService } from "../../database/linksService";
 
 export default function LinksScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  
-  const links = [
-    {
-      id: 1,
-      title: "Poetry Foundation",
-      url: "poetryfoundation.org",
-      description: "Modern poetry collection and resources",
-      tags: ["poetry", "literature"],
-      date: "2 days ago",
-    },
-    {
-      id: 2,
-      title: "Writers & Writers",
-      url: "writersandwriters.com",
-      description: "Inspiring quotes and writing tips",
-      tags: ["writing", "inspiration"],
-      date: "1 week ago",
-    },
-    {
-      id: 3,
-      title: "The Academy of American Poets",
-      url: "poets.org",
-      description: "Poem-a-Day and poetry news",
-      tags: ["poetry", "daily"],
-      date: "2 weeks ago",
-    },
-  ];
+  const [links, setLinks] = useState<Link[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadLinks();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      searchLinks();
+    } else {
+      loadLinks();
+    }
+  }, [searchQuery]);
+
+  const loadLinks = async () => {
+    try {
+      setLoading(true);
+      const allLinks = await LinksService.getAllLinks();
+      setLinks(allLinks);
+    } catch (error) {
+      console.error('Error loading links:', error);
+      Alert.alert('Error', 'Failed to load links');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchLinks = async () => {
+    try {
+      setLoading(true);
+      const searchResults = await LinksService.searchLinks(searchQuery.trim());
+      setLinks(searchResults);
+    } catch (error) {
+      console.error('Error searching links:', error);
+      Alert.alert('Error', 'Failed to search links');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  const toggleFavorite = async (linkId: number) => {
+    try {
+      await LinksService.toggleFavorite(linkId);
+      // Refresh the links to show updated favorite status
+      if (searchQuery.trim()) {
+        searchLinks();
+      } else {
+        loadLinks();
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite status');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -59,35 +101,58 @@ export default function LinksScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {links.map((link) => (
-          <TouchableOpacity key={link.id} style={styles.linkCard}>
-            <View style={styles.linkHeader}>
-              <View style={styles.linkIcon}>
-                <Ionicons name="link" size={20} color="#63B3ED" />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading links...</Text>
+          </View>
+        ) : links.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="link-outline" size={64} color="#4A5568" />
+            <Text style={styles.emptyTitle}>No Links Found</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery ? "Try a different search term" : "Start saving your first link"}
+            </Text>
+          </View>
+        ) : (
+          links.map((link) => (
+            <TouchableOpacity key={link.id} style={styles.linkCard}>
+              <View style={styles.linkHeader}>
+                <View style={styles.linkIcon}>
+                  <Ionicons name="link" size={20} color="#63B3ED" />
+                </View>
+                <View style={styles.linkInfo}>
+                  <Text style={styles.linkTitle}>{link.title}</Text>
+                  <Text style={styles.linkUrl}>{link.url}</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.favoriteButton}
+                  onPress={() => toggleFavorite(link.id!)}
+                >
+                  <Ionicons 
+                    name={link.is_favorite ? "heart" : "heart-outline"} 
+                    size={18} 
+                    color={link.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
+                  />
+                </TouchableOpacity>
               </View>
-              <View style={styles.linkInfo}>
-                <Text style={styles.linkTitle}>{link.title}</Text>
-                <Text style={styles.linkUrl}>{link.url}</Text>
+              
+              <Text style={styles.linkDescription}>{link.description || "No description available"}</Text>
+              
+              <View style={styles.linkFooter}>
+                <View style={styles.tags}>
+                  {(link.tags || []).map((tag, index) => (
+                    <Text key={index} style={styles.tag}>
+                      #{tag}
+                    </Text>
+                  ))}
+                </View>
+                <Text style={styles.linkDate}>
+                  {formatDate(link.updated_at || link.created_at || "")}
+                </Text>
               </View>
-              <TouchableOpacity style={styles.shareButton}>
-                <Ionicons name="share" size={18} color="#8E9BA2" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.linkDescription}>{link.description}</Text>
-            
-            <View style={styles.linkFooter}>
-              <View style={styles.tags}>
-                {link.tags.map((tag, index) => (
-                  <Text key={index} style={styles.tag}>
-                    {tag}
-                  </Text>
-                ))}
-              </View>
-              <Text style={styles.linkDate}>{link.date}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -171,6 +236,37 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     padding: 8,
+  },
+  favoriteButton: {
+    padding: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 50,
+  },
+  loadingText: {
+    color: "#A0AEC0",
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#A0AEC0",
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#8E9BA2",
+    textAlign: "center",
   },
   linkDescription: {
     fontSize: 14,

@@ -1,7 +1,22 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import { initializeDatabase } from "../database/database";
 
 export default function RootLayout() {
+  useEffect(() => {
+    const initDb = async () => {
+      try {
+        await initializeDatabase();
+        console.log('Database initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize database:', error);
+      }
+    };
+
+    initDb();
+  }, []);
+
   return (
     <>
       <StatusBar style="auto" />

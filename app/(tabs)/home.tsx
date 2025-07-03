@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     Alert,
     Animated,
     Modal,
+    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -12,19 +13,101 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { getDatabaseStats } from "../../database/database";
+import { LinksService } from "../../database/linksService";
+import { NotesService } from "../../database/notesService";
+import { PhotosService } from "../../database/photosService";
+
+interface RecentItem {
+  id: number;
+  type: "note" | "link" | "photo";
+  title: string;
+  date: string;
+}
+
+interface DatabaseStats {
+  notes_count: number;
+  links_count: number;
+  photos_count: number;
+  tags_count: number;
+  collections_count: number;
+}
 
 export default function HomeScreen() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
+  const [stats, setStats] = useState<DatabaseStats>({
+    notes_count: 0,
+    links_count: 0,
+    photos_count: 0,
+    tags_count: 0,
+    collections_count: 0,
+  });
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const recentItems = [
-    { id: 1, type: "note", title: "Poetry Collection Ideas", date: "Today" },
-    { id: 2, type: "link", title: "Modern Poetry Website", date: "Yesterday" },
-    { id: 3, type: "photo", title: "Sunset Inspiration", date: "2 days ago" },
-    { id: 4, type: "note", title: "Verse about freedom", date: "3 days ago" },
-  ];
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      return;
+    }
+    
+    try {
+      // Load database stats
+      const dbStats = await getDatabaseStats();
+      setStats(dbStats as DatabaseStats);
+
+      // Load recent items
+      const recentNotes = await NotesService.getRecentNotes(2);
+      const recentLinks = await LinksService.getRecentLinks(2);
+      const recentPhotos = await PhotosService.getRecentPhotos(2);
+
+      const allRecent: RecentItem[] = [
+        ...recentNotes.map(note => ({
+          id: note.id!,
+          type: "note" as const,
+          title: note.title,
+          date: formatDate(note.updated_at || note.created_at || ""),
+        })),
+        ...recentLinks.map(link => ({
+          id: link.id!,
+          type: "link" as const,
+          title: link.title,
+          date: formatDate(link.updated_at || link.created_at || ""),
+        })),
+        ...recentPhotos.map(photo => ({
+          id: photo.id!,
+          type: "photo" as const,
+          title: photo.title,
+          date: formatDate(photo.updated_at || photo.created_at || ""),
+        })),
+      ];
+
+      // Sort by date and take top 4
+      allRecent.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setRecentItems(allRecent.slice(0, 4));
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    return date.toLocaleDateString();
+  };
 
   const getIconName = (type: string) => {
     switch (type) {
@@ -48,29 +131,45 @@ export default function HomeScreen() {
     }).start();
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Database operations are not supported on web platform");
+      return;
+    }
+    
     if (!noteTitle.trim() || !noteContent.trim()) {
       Alert.alert("Error", "Please fill in both title and content");
       return;
     }
 
-    // Here you would typically save to your data store
-    Alert.alert("Success", "Note saved successfully!", [
-      {
-        text: "OK",
-        onPress: () => {
-          Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }).start(() => {
-            setShowNoteModal(false);
-            setNoteTitle("");
-            setNoteContent("");
-          });
+    try {
+      await NotesService.createNote({
+        title: noteTitle.trim(),
+        content: noteContent.trim(),
+      });
+
+      Alert.alert("Success", "Note saved successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            Animated.timing(fadeAnim, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }).start(() => {
+              setShowNoteModal(false);
+              setNoteTitle("");
+              setNoteContent("");
+              loadData(); // Refresh data after saving
+            });
+          },
         },
-      },
-    ]);
+      ]);
+    } catch (error) {
+      console.error('Error saving note:', error);
+      Alert.alert("Error", "Failed to save note. Please try again.");
+    }
   };
 
   const handleCloseModal = () => {
@@ -96,22 +195,24 @@ export default function HomeScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Ionicons name="library" size={24} color="#FF6B6B" />
-            <Text style={styles.statNumber}>24</Text>
+            <Text style={styles.statNumber}>
+              {stats.notes_count + stats.links_count + stats.photos_count}
+            </Text>
             <Text style={styles.statLabel}>Total Items</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="document-text" size={24} color="#68D391" />
-            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statNumber}>{stats.notes_count}</Text>
             <Text style={styles.statLabel}>Notes</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="link" size={24} color="#63B3ED" />
-            <Text style={styles.statNumber}>8</Text>
+            <Text style={styles.statNumber}>{stats.links_count}</Text>
             <Text style={styles.statLabel}>Links</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="images" size={24} color="#F6AD55" />
-            <Text style={styles.statNumber}>4</Text>
+            <Text style={styles.statNumber}>{stats.photos_count}</Text>
             <Text style={styles.statLabel}>Photos</Text>
           </View>
         </View>
@@ -120,11 +221,12 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Recent Items</Text>
           {recentItems.map((item) => (
             <TouchableOpacity key={item.id} style={styles.itemCard}>
-              <View style={styles.itemIcon}>              <Ionicons
-                name={getIconName(item.type) as any}
-                size={20}
-                color="#FF6B6B"
-              />
+              <View style={styles.itemIcon}>
+                <Ionicons
+                  name={getIconName(item.type) as any}
+                  size={20}
+                  color="#FF6B6B"
+                />
               </View>
               <View style={styles.itemContent}>
                 <Text style={styles.itemTitle}>{item.title}</Text>
