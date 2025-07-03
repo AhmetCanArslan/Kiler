@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     Alert,
     SafeAreaView,
@@ -17,9 +18,17 @@ export default function LinksScreen() {
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadLinks();
-  }, []);
+  // Load links when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Links screen focused - reloading data');
+      if (searchQuery.trim()) {
+        searchLinks();
+      } else {
+        loadLinks();
+      }
+    }, [searchQuery])
+  );
 
   useEffect(() => {
     if (searchQuery.trim()) {

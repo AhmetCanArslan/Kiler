@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     Alert,
     Animated,
@@ -47,10 +48,18 @@ export default function HomeScreen() {
   });
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Load data on component mount
+  // Load data on component mount and when screen comes into focus
   useEffect(() => {
     loadData();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Home screen focused - reloading data');
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     // Skip database operations on web platform
@@ -149,6 +158,7 @@ export default function HomeScreen() {
         content: noteContent.trim(),
       });
 
+      console.log('Note created successfully');
       Alert.alert("Success", "Note saved successfully!", [
         {
           text: "OK",

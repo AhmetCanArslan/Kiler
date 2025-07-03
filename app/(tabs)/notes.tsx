@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     Alert,
     SafeAreaView,
@@ -17,9 +18,17 @@ export default function NotesScreen() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadNotes();
-  }, []);
+  // Load notes when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Notes screen focused - reloading data');
+      if (searchQuery.trim()) {
+        searchNotes();
+      } else {
+        loadNotes();
+      }
+    }, [searchQuery])
+  );
 
   useEffect(() => {
     if (searchQuery.trim()) {

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     Alert,
     Dimensions,
@@ -21,9 +22,17 @@ export default function PhotosScreen() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadPhotos();
-  }, []);
+  // Load photos when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Photos screen focused - reloading data');
+      if (searchQuery.trim()) {
+        searchPhotos();
+      } else {
+        loadPhotos();
+      }
+    }, [searchQuery])
+  );
 
   useEffect(() => {
     if (searchQuery.trim()) {
