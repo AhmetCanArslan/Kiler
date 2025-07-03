@@ -21,7 +21,6 @@ export default function LinksScreen() {
   // Load links when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('Links screen focused - reloading data');
       if (searchQuery.trim()) {
         searchLinks();
       } else {

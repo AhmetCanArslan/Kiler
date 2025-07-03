@@ -56,7 +56,6 @@ export default function HomeScreen() {
   // Refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('Home screen focused - reloading data');
       loadData();
     }, [])
   );
@@ -158,7 +157,6 @@ export default function HomeScreen() {
         content: noteContent.trim(),
       });
 
-      console.log('Note created successfully');
       Alert.alert("Success", "Note saved successfully!", [
         {
           text: "OK",

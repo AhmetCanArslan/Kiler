@@ -25,7 +25,6 @@ export default function PhotosScreen() {
   // Load photos when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('Photos screen focused - reloading data');
       if (searchQuery.trim()) {
         searchPhotos();
       } else {
