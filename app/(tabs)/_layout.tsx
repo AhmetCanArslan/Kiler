@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
+import { TouchableOpacity } from "react-native";
 
 export default function TabLayout() {
+  const router = useRouter();
   return (
     <Tabs
       screenOptions={({ route }) => ({
@@ -46,6 +48,15 @@ export default function TabLayout() {
           fontWeight: "700",
           fontSize: 18,
         },
+        headerRight: () => (
+          <TouchableOpacity
+            style={{ marginRight: 18 }}
+            onPress={() => router.push("/settings")}
+            accessibilityLabel="Settings"
+          >
+            <Ionicons name="settings-outline" size={26} color="#F7FAFC" />
+          </TouchableOpacity>
+        ),
       })}
     >
       <Tabs.Screen
