@@ -1,121 +1,129 @@
+
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs, useRouter } from "expo-router";
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { useRouter } from "expo-router";
 import { TouchableOpacity } from "react-native";
+import AddScreen from './add';
+import HomeScreen from './home';
+import LinksScreen from './links';
+import NotesScreen from './notes';
+import PhotosScreen from './photos';
+
+
+const Tab = createMaterialTopTabNavigator();
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const router = useRouter();
   return (
-    <Tabs
-      screenOptions={({ route }) => ({
-        tabBarActiveTintColor:
-          route.name === "notes"
-            ? "#2ee28f"
-            : route.name === "links"
-            ? "#62abf0"
-            : route.name === "photos"
-            ? "#e4a448"
-            : "#FF6B6B",
-        tabBarInactiveTintColor: "#8E9BA2",
-        tabBarStyle: {
-          backgroundColor: "#1A1D23",
-          borderTopColor: "#2D3748",
-          borderTopWidth: 1,
-          height: 85,
-          paddingBottom: 12,
-          paddingTop: 12,
-          shadowColor: "#000",
-          shadowOffset: {
-            width: 0,
-            height: -4,
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#1A1D23' }} edges={['top', 'bottom', 'left', 'right']}>
+      <Tab.Navigator
+        initialRouteName="home"
+        tabBarPosition="bottom"
+        screenOptions={({ route }) => ({
+          swipeEnabled: true,
+          tabBarActiveTintColor:
+            route.name === "notes"
+              ? "#2ee28f"
+              : route.name === "links"
+              ? "#62abf0"
+              : route.name === "photos"
+              ? "#e4a448"
+              : "#FF6B6B",
+          tabBarInactiveTintColor: "#8E9BA2",
+          tabBarStyle: {
+            backgroundColor: "#1A1D23",
+            borderTopColor: "#2D3748",
+            borderTopWidth: 1,
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: -4,
+            },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 8,
+            paddingBottom: 8, // Add bottom padding for nav bar
           },
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
-          elevation: 8,
-        },
-        headerStyle: {
-          backgroundColor: "#0F1419",
-          shadowColor: "#000",
-          shadowOffset: {
-            width: 0,
-            height: 2,
+          tabBarShowIcon: true,
+          tabBarShowLabel: true,
+          tabBarLabelStyle: {
+            fontSize: 13,
+            fontWeight: '600',
+            marginBottom: 2,
           },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 4,
-        },
-        headerTintColor: "#F7FAFC",
-        headerTitleStyle: {
-          fontWeight: "700",
-          fontSize: 18,
-        },
-        headerRight: () => (
-          <TouchableOpacity
-            style={{ marginRight: 18 }}
-            onPress={() => router.push("/settings")}
-            accessibilityLabel="Settings"
-          >
-            <Ionicons name="settings-outline" size={26} color="#F7FAFC" />
-          </TouchableOpacity>
-        ),
-      })}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="library" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="notes"
-        options={{
-          title: "Notes",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name="document-text"
-              size={size}
-              color={focused ? "#2ee28f" : color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="links"
-        options={{
-          title: "Links",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name="link"
-              size={size}
-              color={focused ? "#62abf0" : color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="photos"
-        options={{
-          title: "Photos",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name="images"
-              size={size}
-              color={focused ? "#fab148" : color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="add"
-        options={{
-          title: "Add",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add-circle" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+          indicatorStyle: { height: 0, backgroundColor: 'transparent' }, // Remove blue indicator bar
+        })}
+      >
+        <Tab.Screen
+          name="home"
+          options={{
+            tabBarLabel: 'Home',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name="library" size={26} color={focused ? "#FF6B6B" : color} />
+            ),
+          }}
+        >
+          {props => <HomeScreen {...props} settingsButton={
+            <TouchableOpacity
+              style={{
+                position: 'absolute',
+                top: 18,
+                right: 18,
+                zIndex: 99,
+                backgroundColor: 'rgba(26,29,35,0.92)',
+                borderRadius: 20,
+                padding: 4,
+              }}
+              onPress={() => router.push("/settings")}
+              accessibilityLabel="Settings"
+            >
+              <Ionicons name="settings-outline" size={26} color="#F7FAFC" />
+            </TouchableOpacity>
+          } />}
+        </Tab.Screen>
+        <Tab.Screen
+          name="notes"
+          component={NotesScreen}
+          options={{
+            tabBarLabel: 'Notes',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name="document-text" size={26} color={focused ? "#2ee28f" : color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="links"
+          component={LinksScreen}
+          options={{
+            tabBarLabel: 'Links',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name="link" size={26} color={focused ? "#62abf0" : color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="photos"
+          component={PhotosScreen}
+          options={{
+            tabBarLabel: 'Photos',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name="images" size={26} color={focused ? "#fab148" : color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="add"
+          component={AddScreen}
+          options={{
+            tabBarLabel: 'Add',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name="add-circle" size={26} color={focused ? "#FF6B6B" : color} />
+            ),
+          }}
+        />
+      </Tab.Navigator>
+    </SafeAreaView>
   );
 }

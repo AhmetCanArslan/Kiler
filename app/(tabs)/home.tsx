@@ -34,7 +34,11 @@ interface DatabaseStats {
   collections_count: number;
 }
 
-export default function HomeScreen() {
+interface HomeScreenProps {
+  settingsButton?: React.ReactNode;
+}
+
+export default function HomeScreen({ settingsButton }: HomeScreenProps) {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
@@ -203,6 +207,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {settingsButton}
       <Animated.View style={{ flex: 1, opacity: screenFadeAnim }}>
         <Animated.View 
           style={{ 
