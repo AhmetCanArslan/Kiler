@@ -1,3 +1,8 @@
+// Expo Router/React Navigation ekran opsiyonları ile kart arka planını koyulaştır
+export const options = {
+  cardStyle: { backgroundColor: "#0F1419" },
+  presentation: "transparentModal",
+};
 
 import React, { useState } from "react";
 import { Platform, SafeAreaView, StatusBar, StyleSheet, Switch, Text, View } from "react-native";
@@ -14,10 +19,12 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: statusBarHeight }]}> 
-      <Text style={styles.title}>Settings</Text>
-      <View style={styles.settingRow}>
-        <Text style={styles.label}>Dark Theme</Text>
-        <Switch value={darkMode} onValueChange={toggleTheme} />
+      <View style={styles.innerBgFix}>
+        <Text style={styles.title}>Settings</Text>
+        <View style={styles.settingRow}>
+          <Text style={styles.label}>Dark Theme</Text>
+          <Switch value={darkMode} onValueChange={toggleTheme} />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -27,10 +34,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0F1419",
+    padding: 0,
+  },
+  innerBgFix: {
+    flex: 1,
+    backgroundColor: "#0F1419",
     padding: 24,
-    // Prevent white edges on modal push transitions
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
+    minHeight: '100%',
+    minWidth: '100%',
   },
   title: {
     fontSize: 28,
