@@ -14,6 +14,7 @@ interface CommonModalProps {
   animationType?: 'slide' | 'fade' | 'none';
 }
 
+
 export const CommonModal: React.FC<CommonModalProps> = ({
   visible,
   onClose,
@@ -22,60 +23,53 @@ export const CommonModal: React.FC<CommonModalProps> = ({
 }) => {
   const modalAnim = useRef(new Animated.Value(0)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
+  const closingRef = useRef(false);
 
   useEffect(() => {
     if (visible) {
-      // Animate both modal and backdrop in with smooth easing
+      closingRef.current = false;
       Animated.parallel([
         Animated.timing(modalAnim, {
           toValue: 1,
-          duration: 350,
+          duration: 167,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(backdropAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 133,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         })
       ]).start();
-    } else {
-      // Animate both modal and backdrop out smoothly
-      Animated.parallel([
-        Animated.timing(modalAnim, {
-          toValue: 0,
-          duration: 250,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(backdropAnim, {
-          toValue: 0,
-          duration: 200,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
-        })
-      ]).start();
+    } else if (!closingRef.current) {
+      // If not already closing, reset anims
+      modalAnim.setValue(0);
+      backdropAnim.setValue(0);
     }
   }, [visible, modalAnim, backdropAnim]);
 
   const handleClose = () => {
-    // Smooth close animation with proper callback
+    if (closingRef.current) return;
+    closingRef.current = true;
     Animated.parallel([
       Animated.timing(modalAnim, {
         toValue: 0,
-        duration: 250,
+        duration: 133,
         easing: Easing.in(Easing.quad),
         useNativeDriver: true,
       }),
       Animated.timing(backdropAnim, {
         toValue: 0,
-        duration: 200,
+        duration: 100,
         easing: Easing.in(Easing.quad),
         useNativeDriver: true,
       })
     ]).start(() => {
-      onClose();
+      // Defer state update to next tick to avoid React warning
+      requestAnimationFrame(() => {
+        onClose();
+      });
     });
   };
 
@@ -92,17 +86,17 @@ export const CommonModal: React.FC<CommonModalProps> = ({
         activeOpacity={1}
         onPress={handleClose}
       >
-        {/* More transparent backdrop with smooth fade animation */}
+        {/* Daha transparan ve koyu arka plan, hafif blur efekti için uygun */}
         <Animated.View 
           style={[
             styles.backdrop,
             {
               opacity: backdropAnim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, 0.15],
-              }),
+                outputRange: [0, 0.10], // Daha transparan
+              })
             }
-          ]} 
+          ]}
         />
         
         {/* Modal content - prevent backdrop touch from closing */}
@@ -148,7 +142,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 1)",
+    backgroundColor: "rgba(20, 24, 31, 0.92)", // Koyu ve opak, inline verilmez
   },
   modalContent: {
     backgroundColor: "#1A202C",
