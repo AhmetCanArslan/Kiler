@@ -294,7 +294,7 @@ export default function LinksScreen() {
                   <TouchableOpacity style={styles.linkCard}>
                 <View style={styles.linkHeader}>
                   <View style={styles.linkIcon}>
-                    <Ionicons name="link" size={20} color="#63B3ED" />
+                    <Ionicons name="link" size={20} color="#fff" style={{ textShadowColor: '#1A365D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
                   </View>
                   <View style={styles.linkInfo}>
                     <Text style={styles.linkTitle}>{link.title}</Text>
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#63B3ED",
+    backgroundColor: "#63B3ED", 
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,

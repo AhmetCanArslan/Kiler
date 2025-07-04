@@ -171,7 +171,7 @@ export default function PhotosScreen() {
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <View style={styles.header}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#8E9BA2" />
+            <Ionicons name="search" size={20} color="#8E9BA2" style={{ textShadowColor: '#1A365D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search photos..."

@@ -305,7 +305,7 @@ export default function NotesScreen() {
                   <TouchableOpacity style={styles.noteCard}>
                 <View style={styles.noteHeader}>
                   <View style={styles.noteIcon}>
-                    <Ionicons name="document-text" size={20} color="#68D391" />
+                    <Ionicons name="document-text" size={20} color="#fff" style={{ textShadowColor: '#22543D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
                   </View>
                   <View style={styles.noteInfo}>
                     <Text style={styles.noteTitle}>{note.title}</Text>
