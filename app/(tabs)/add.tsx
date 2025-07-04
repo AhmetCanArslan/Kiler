@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -19,9 +19,25 @@ import { LinksService } from "../../database/linksService";
 import { NotesService } from "../../database/notesService";
 import { PhotosService } from "../../database/photosService";
 
+// Remove: import { getRecentItems } from "../../database/recentService";
+
+// Add this type and mock data above the AddScreen component:
+// type RecentItem = {
+//   id: string;
+//   type: 'note' | 'link' | 'photo';
+//   title: string;
+// };
+
+// const mockRecentItems: RecentItem[] = [
+//   { id: '1', type: 'note', title: 'My Poem' },
+//   { id: '2', type: 'link', title: 'React Docs' },
+//   { id: '3', type: 'photo', title: 'Sunset' },
+// ];
+
 export default function AddScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedType, setSelectedType] = useState("");
+  // const [recentItems] = useState<RecentItem[]>(mockRecentItems);
   // Home ekranındaki gibi fade animasyonu
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const contentOpacityAnim = useRef(new Animated.Value(1)).current;
@@ -39,6 +55,11 @@ export default function AddScreen() {
       }).start();
     }, [fadeAnim])
   );
+
+  useEffect(() => {
+    // Fetch recent items (notes, links, photos)
+    // getRecentItems().then(setRecentItems);
+  }, []);
 
   // Take photo function
   const takePhoto = async () => {
