@@ -1,8 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useRef, useState } from "react";
 import {
+  Alert,
   Animated, Modal,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -11,6 +14,9 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { LinksService } from "../../database/linksService";
+import { NotesService } from "../../database/notesService";
+import { PhotosService } from "../../database/photosService";
 
 export default function AddScreen() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -31,6 +37,102 @@ export default function AddScreen() {
       }).start();
     }, [fadeAnim])
   );
+
+  // Take photo function
+  const takePhoto = async () => {
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Camera permission is needed to take photos.');
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        await savePhoto(asset);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  // Pick image from gallery
+  const pickImageFromGallery = async () => {
+    try {
+      // Request media library permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Gallery permission is needed to select photos.');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        await savePhoto(asset);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  // Save photo to database
+  const savePhoto = async (asset: ImagePicker.ImagePickerAsset) => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Photo saving is not supported on web platform");
+      return;
+    }
+
+    try {
+      // Generate a title from the filename or use a default
+      const filename = asset.uri.split('/').pop() || 'untitled.jpg';
+      const title = filename.replace(/\.[^/.]+$/, ""); // Remove extension
+
+      await PhotosService.createPhoto({
+        title: title,
+        description: `Photo taken on ${new Date().toLocaleDateString()}`,
+        file_path: asset.uri,
+        original_name: filename,
+        file_size: asset.fileSize,
+        width: asset.width,
+        height: asset.height,
+        mime_type: asset.mimeType,
+        tags: ['photo', 'captured'],
+        taken_at: new Date().toISOString(),
+      });
+
+      Alert.alert('Success', 'Photo saved successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setModalVisible(false);
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Error saving photo:', error);
+      Alert.alert('Error', 'Failed to save photo');
+    }
+  };
 
   // Eğer tab focus animasyonu da istenirse aşağıdaki kodu açabilirsiniz:
   // import { useFocusEffect } from '@react-navigation/native';
@@ -88,7 +190,11 @@ export default function AddScreen() {
       case "link":
         return <LinkForm onClose={() => setModalVisible(false)} />;
       case "photo":
-        return <PhotoForm onClose={() => setModalVisible(false)} />;
+        return <PhotoForm 
+          onClose={() => setModalVisible(false)} 
+          onTakePhoto={takePhoto}
+          onPickFromGallery={pickImageFromGallery}
+        />;
       default:
         return null;
     }
@@ -175,64 +281,160 @@ export default function AddScreen() {
 }
 
 // Simple form components for different content types
-const NoteForm = ({ onClose }: { onClose: () => void }) => (
-  <View style={styles.formContainer}>
-    <View style={styles.formHeader}>
-      <Text style={styles.formTitle}>Create Note</Text>
-      <TouchableOpacity onPress={onClose}>
-        <Ionicons name="close" size={24} color="#8E9BA2" />
+const NoteForm = ({ onClose }: { onClose: () => void }) => {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+
+  const handleSave = async () => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Database operations are not supported on web platform");
+      return;
+    }
+
+    if (!title.trim() || !content.trim()) {
+      Alert.alert("Error", "Please fill in both title and content");
+      return;
+    }
+
+    try {
+      await NotesService.createNote({
+        title: title.trim(),
+        content: content.trim(),
+      });
+
+      Alert.alert("Success", "Note saved successfully!", [
+        {
+          text: "OK",
+          onPress: onClose,
+        },
+      ]);
+    } catch (error) {
+      console.error('Error saving note:', error);
+      Alert.alert("Error", "Failed to save note. Please try again.");
+    }
+  };
+
+  return (
+    <View style={styles.formContainer}>
+      <View style={styles.formHeader}>
+        <Text style={styles.formTitle}>Create Note</Text>
+        <TouchableOpacity onPress={onClose}>
+          <Ionicons name="close" size={24} color="#8E9BA2" />
+        </TouchableOpacity>
+      </View>
+      <TextInput
+        style={styles.titleInput}
+        placeholder="Note title..."
+        placeholderTextColor="#8E9BA2"
+        value={title}
+        onChangeText={setTitle}
+        autoFocus={true}
+      />
+      <TextInput
+        style={styles.contentInput}
+        placeholder="Write your thoughts, poetry, or ideas..."
+        placeholderTextColor="#8E9BA2"
+        multiline
+        numberOfLines={10}
+        value={content}
+        onChangeText={setContent}
+        textAlignVertical="top"
+      />
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <Text style={styles.saveButtonText}>Save Note</Text>
       </TouchableOpacity>
     </View>
-    <TextInput
-      style={styles.titleInput}
-      placeholder="Note title..."
-      placeholderTextColor="#8E9BA2"
-    />
-    <TextInput
-      style={styles.contentInput}
-      placeholder="Write your thoughts, poetry, or ideas..."
-      placeholderTextColor="#8E9BA2"
-      multiline
-      numberOfLines={10}
-    />
-    <TouchableOpacity style={styles.saveButton}>
-      <Text style={styles.saveButtonText}>Save Note</Text>
-    </TouchableOpacity>
-  </View>
-);
+  );
+};
 
-const LinkForm = ({ onClose }: { onClose: () => void }) => (
-  <View style={styles.formContainer}>
-    <View style={styles.formHeader}>
-      <Text style={styles.formTitle}>Save Link</Text>
-      <TouchableOpacity onPress={onClose}>
-        <Ionicons name="close" size={24} color="#8E9BA2" />
+const LinkForm = ({ onClose }: { onClose: () => void }) => {
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+
+  const handleSave = async () => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Database operations are not supported on web platform");
+      return;
+    }
+
+    if (!title.trim() || !url.trim()) {
+      Alert.alert("Error", "Please fill in both title and URL");
+      return;
+    }
+
+    try {
+      await LinksService.createLink({
+        title: title.trim(),
+        url: url.trim(),
+        description: description.trim() || undefined,
+      });
+
+      Alert.alert("Success", "Link saved successfully!", [
+        {
+          text: "OK",
+          onPress: onClose,
+        },
+      ]);
+    } catch (error) {
+      console.error('Error saving link:', error);
+      Alert.alert("Error", "Failed to save link. Please try again.");
+    }
+  };
+
+  return (
+    <View style={styles.formContainer}>
+      <View style={styles.formHeader}>
+        <Text style={styles.formTitle}>Save Link</Text>
+        <TouchableOpacity onPress={onClose}>
+          <Ionicons name="close" size={24} color="#8E9BA2" />
+        </TouchableOpacity>
+      </View>
+      <TextInput
+        style={styles.titleInput}
+        placeholder="Link title..."
+        placeholderTextColor="#8E9BA2"
+        value={title}
+        onChangeText={setTitle}
+        autoFocus={true}
+      />
+      <TextInput
+        style={styles.titleInput}
+        placeholder="URL..."
+        placeholderTextColor="#8E9BA2"
+        value={url}
+        onChangeText={setUrl}
+        autoCapitalize="none"
+        keyboardType="url"
+      />
+      <TextInput
+        style={styles.contentInput}
+        placeholder="Description (optional)..."
+        placeholderTextColor="#8E9BA2"
+        multiline
+        numberOfLines={4}
+        value={description}
+        onChangeText={setDescription}
+        textAlignVertical="top"
+      />
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <Text style={styles.saveButtonText}>Save Link</Text>
       </TouchableOpacity>
     </View>
-    <TextInput
-      style={styles.titleInput}
-      placeholder="Link title..."
-      placeholderTextColor="#8E9BA2"
-    />
-    <TextInput
-      style={styles.titleInput}
-      placeholder="URL..."
-      placeholderTextColor="#8E9BA2"
-    />
-    <TextInput
-      style={styles.contentInput}
-      placeholder="Description (optional)..."
-      placeholderTextColor="#8E9BA2"
-      multiline
-      numberOfLines={4}
-    />
-    <TouchableOpacity style={styles.saveButton}>
-      <Text style={styles.saveButtonText}>Save Link</Text>
-    </TouchableOpacity>
-  </View>
-);
+  );
+};
 
-const PhotoForm = ({ onClose }: { onClose: () => void }) => (
+const PhotoForm = ({ 
+  onClose, 
+  onTakePhoto, 
+  onPickFromGallery 
+}: { 
+  onClose: () => void;
+  onTakePhoto: () => Promise<void>;
+  onPickFromGallery: () => Promise<void>;
+}) => (
   <View style={styles.formContainer}>
     <View style={styles.formHeader}>
       <Text style={styles.formTitle}>Add Photo</Text>
@@ -241,12 +443,12 @@ const PhotoForm = ({ onClose }: { onClose: () => void }) => (
       </TouchableOpacity>
     </View>
     <View style={styles.photoOptions}>
-      <TouchableOpacity style={styles.photoOption}>
-        <Ionicons name="camera" size={32} color="#FF6B6B" />
+      <TouchableOpacity style={styles.photoOption} onPress={onTakePhoto}>
+        <Ionicons name="camera" size={32} color="#F6AD55" />
         <Text style={styles.photoOptionText}>Take Photo</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.photoOption}>
-        <Ionicons name="library" size={32} color="#FF6B6B" />
+      <TouchableOpacity style={styles.photoOption} onPress={onPickFromGallery}>
+        <Ionicons name="library" size={32} color="#F6AD55" />
         <Text style={styles.photoOptionText}>Choose from Gallery</Text>
       </TouchableOpacity>
     </View>
@@ -388,7 +590,7 @@ const styles = StyleSheet.create({
     borderColor: "#4A5568",
   },
   saveButton: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "#68D391",
     borderRadius: 12,
     padding: 15,
     alignItems: "center",
@@ -402,14 +604,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     marginTop: 30,
+    gap: 20,
   },
   photoOption: {
+    flex: 1,
+    backgroundColor: "#2D3748",
+    borderRadius: 16,
     alignItems: "center",
-    padding: 20,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "#4A5568",
   },
   photoOptionText: {
     color: "#F7FAFC",
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 16,
+    fontWeight: "500",
+    textAlign: "center",
   },
 });
