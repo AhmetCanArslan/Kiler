@@ -1,9 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
-  Animated,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -11,7 +9,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { getDatabaseStats } from "../../database/database";
@@ -50,31 +48,18 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     tags_count: 0,
     collections_count: 0,
   });
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const screenFadeAnim = useRef(new Animated.Value(0)).current;
-  const contentOpacityAnim = useRef(new Animated.Value(1)).current;
+  // Fade animations removed
+  // const fadeAnim = useRef(new Animated.Value(0)).current;
+  // const screenFadeAnim = useRef(new Animated.Value(0)).current;
+  // const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
   // Load data on component mount
   useEffect(() => {
     loadData();
-    Animated.timing(screenFadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
   }, []);
 
   // Only fade animation when screen comes into focus, avoid duplicate data loading
-  useFocusEffect(
-    useCallback(() => {
-      screenFadeAnim.setValue(0);
-      Animated.timing(screenFadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    }, [screenFadeAnim])
-  );
+  // Fade animation on focus removed
 
   const loadData = async () => {
     // Skip database operations on web platform
@@ -147,14 +132,7 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
   };
 
   const handleAddNote = () => {
-    // Animate content fade out smoothly before showing modal
-    Animated.timing(contentOpacityAnim, {
-      toValue: 0.7,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowNoteModal(true);
-    });
+    setShowNoteModal(true);
   };
 
   const handleSaveNote = async () => {
@@ -196,26 +174,13 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     setShowNoteModal(false);
     setNoteTitle("");
     setNoteContent("");
-    
-    // Animate content back to full opacity smoothly
-    Animated.timing(contentOpacityAnim, {
-      toValue: 1,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       {settingsButton}
-      <Animated.View style={{ flex: 1, opacity: screenFadeAnim }}>
-        <Animated.View 
-          style={{ 
-            flex: 1, 
-            opacity: contentOpacityAnim 
-          }}
-        >
-          <ScrollView style={styles.content}>
+      <View style={{ flex: 1 }}>
+        <ScrollView style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.greeting}>Kiler</Text>
             <Text style={styles.subtitle}>Your digital poetry archive</Text>
@@ -305,8 +270,7 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
             </View>
           </View>
         </ScrollView>
-        </Animated.View>
-      </Animated.View>
+      </View>
 
       {/* Add Note Modal */}
       <CommonModal

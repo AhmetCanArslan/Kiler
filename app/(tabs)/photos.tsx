@@ -1,17 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Animated,
+    Dimensions,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { Photo, PhotosService } from "../../database/photosService";
 
@@ -22,8 +21,9 @@ export default function PhotosScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
-  const listAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  // Fade animations removed
+  // const listAnim = useRef(new Animated.Value(0)).current;
+  // const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Load photos when search query changes
   useEffect(() => {
@@ -32,25 +32,10 @@ export default function PhotosScreen() {
     } else {
       loadPhotos();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // Fade in animation only on focus (tab switch)
-  useFocusEffect(
-    useCallback(() => {
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-      
-      // Only load photos if we don't have any yet or search is empty
-      if (photos.length === 0 || !searchQuery.trim()) {
-        loadPhotos();
-      }
-    }, [])
-  );
+  // Fade animation on focus removed
 
 
   const loadPhotos = async () => {
@@ -70,19 +55,7 @@ export default function PhotosScreen() {
       });
       setPhotos(sortedPhotos);
       
-      // Only animate if this is the first load or we don't have photos yet
-      if (photos.length === 0) {
-        // Reset animation for initial load
-        listAnim.setValue(0);
-        Animated.timing(listAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
-      } else {
-        // If we already have photos, just set the animation value to completed state
-        listAnim.setValue(1);
-      }
+      // Animation removed
     } catch (error) {
       console.error('Error loading photos:', error);
       Alert.alert('Error', 'Failed to load photos');
@@ -156,7 +129,7 @@ export default function PhotosScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <View style={{ flex: 1 }}>
         <View style={styles.header}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#8E9BA2" style={{ textShadowColor: '#1A365D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
@@ -190,7 +163,7 @@ export default function PhotosScreen() {
               {photos.map((photo) => (
                 <Animated.View
                   key={photo.id}
-                  style={{ opacity: listAnim }}
+                  // Fade animation removed
                 >
                   <TouchableOpacity style={styles.photoCard}>
                     <View style={styles.photoPlaceholder}>
@@ -245,7 +218,7 @@ export default function PhotosScreen() {
             </View>
           )}
         </ScrollView>
-      </Animated.View>
+      </View>
     </SafeAreaView>
   );
 }

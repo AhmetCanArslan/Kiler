@@ -1,10 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
-  Animated,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -34,27 +32,11 @@ import { PhotosService } from "../../database/photosService";
 //   { id: '3', type: 'photo', title: 'Sunset' },
 // ];
 
+
 export default function AddScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedType, setSelectedType] = useState("");
   // const [recentItems] = useState<RecentItem[]>(mockRecentItems);
-  // Home ekranındaki gibi fade animasyonu
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const contentOpacityAnim = useRef(new Animated.Value(1)).current;
-
-  // Ekran mount olduğunda ve focus olduğunda animasyonu başlat
-
-  // Her ekrana gelindiğinde animasyon çalışsın
-  useFocusEffect(
-    useCallback(() => {
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    }, [fadeAnim])
-  );
 
   useEffect(() => {
     // Fetch recent items (notes, links, photos)
@@ -157,19 +139,6 @@ export default function AddScreen() {
     }
   };
 
-  // Eğer tab focus animasyonu da istenirse aşağıdaki kodu açabilirsiniz:
-  // import { useFocusEffect } from '@react-navigation/native';
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     fadeAnim.setValue(0);
-  //     require('react-native').Animated.timing(fadeAnim, {
-  //       toValue: 1,
-  //       duration: 400,
-  //       useNativeDriver: true,
-  //     }).start();
-  //   }, [fadeAnim])
-  // );
-
   const addOptions = [
     {
       id: "note",
@@ -202,27 +171,13 @@ export default function AddScreen() {
   ];
 
   const handleOptionPress = (type: string) => {
-    // Animate content fade out smoothly before showing modal
-    Animated.timing(contentOpacityAnim, {
-      toValue: 0.7,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
-      setSelectedType(type);
-      setModalVisible(true);
-    });
+    setSelectedType(type);
+    setModalVisible(true);
   };
 
   const handleCloseModal = () => {
     setModalVisible(false);
     setSelectedType("");
-    
-    // Animate content back to full opacity smoothly
-    Animated.timing(contentOpacityAnim, {
-      toValue: 1,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
   };
 
   const renderAddForm = () => {
@@ -242,9 +197,73 @@ export default function AddScreen() {
     }
   };
 
+// NoteForm component
+const NoteForm = ({ onClose }: { onClose: () => void }) => {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+
+  const handleSave = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Database operations are not supported on web platform");
+      return;
+    }
+    if (!title.trim() || !content.trim()) {
+      Alert.alert("Error", "Please fill in both title and content");
+      return;
+    }
+    try {
+      await NotesService.createNote({
+        title: title.trim(),
+        content: content.trim(),
+      });
+      Alert.alert("Success", "Note saved successfully!", [
+        {
+          text: "OK",
+          onPress: onClose,
+        },
+      ]);
+    } catch (error) {
+      console.error('Error saving note:', error);
+      Alert.alert("Error", "Failed to save note. Please try again.");
+    }
+  };
+
+  return (
+    <View style={styles.formContainer}>
+      <View style={styles.formHeader}>
+        <Text style={styles.formTitle}>Create Note</Text>
+        <TouchableOpacity onPress={onClose}>
+          <Ionicons name="close" size={24} color="#8E9BA2" />
+        </TouchableOpacity>
+      </View>
+      <TextInput
+        style={styles.titleInput}
+        placeholder="Note title..."
+        placeholderTextColor="#8E9BA2"
+        value={title}
+        onChangeText={setTitle}
+        autoFocus={true}
+      />
+      <TextInput
+        style={styles.contentInput}
+        placeholder="Write your thoughts, poetry, or ideas..."
+        placeholderTextColor="#8E9BA2"
+        multiline
+        numberOfLines={10}
+        value={content}
+        onChangeText={setContent}
+        textAlignVertical="top"
+      />
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <Text style={styles.saveButtonText}>Save Note</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <View style={{ flex: 1 }}>
         <View style={styles.header}>
           <Text style={styles.title}>Add to Archive</Text>
           <Text style={styles.subtitle}>Choose what you'd like to add</Text>
@@ -315,78 +334,10 @@ export default function AddScreen() {
         >
           {renderAddForm()}
         </CommonModal>
-      </Animated.View>
+      </View>
     </SafeAreaView>
   );
 }
-
-// Simple form components for different content types
-const NoteForm = ({ onClose }: { onClose: () => void }) => {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-
-  const handleSave = async () => {
-    // Skip database operations on web platform
-    if (Platform.OS === 'web') {
-      Alert.alert("Not supported", "Database operations are not supported on web platform");
-      return;
-    }
-
-    if (!title.trim() || !content.trim()) {
-      Alert.alert("Error", "Please fill in both title and content");
-      return;
-    }
-
-    try {
-      await NotesService.createNote({
-        title: title.trim(),
-        content: content.trim(),
-      });
-
-      Alert.alert("Success", "Note saved successfully!", [
-        {
-          text: "OK",
-          onPress: onClose,
-        },
-      ]);
-    } catch (error) {
-      console.error('Error saving note:', error);
-      Alert.alert("Error", "Failed to save note. Please try again.");
-    }
-  };
-
-  return (
-    <View style={styles.formContainer}>
-      <View style={styles.formHeader}>
-        <Text style={styles.formTitle}>Create Note</Text>
-        <TouchableOpacity onPress={onClose}>
-          <Ionicons name="close" size={24} color="#8E9BA2" />
-        </TouchableOpacity>
-      </View>
-      <TextInput
-        style={styles.titleInput}
-        placeholder="Note title..."
-        placeholderTextColor="#8E9BA2"
-        value={title}
-        onChangeText={setTitle}
-        autoFocus={true}
-      />
-      <TextInput
-        style={styles.contentInput}
-        placeholder="Write your thoughts, poetry, or ideas..."
-        placeholderTextColor="#8E9BA2"
-        multiline
-        numberOfLines={10}
-        value={content}
-        onChangeText={setContent}
-        textAlignVertical="top"
-      />
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Save Note</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
 
 const LinkForm = ({ onClose }: { onClose: () => void }) => {
   const [title, setTitle] = useState("");

@@ -1,17 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  Animated,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Note, NotesService } from "../../database/notesService";
@@ -23,9 +21,10 @@ export default function NotesScreen() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const listAnim = useRef(new Animated.Value(0)).current;
-  const contentOpacityAnim = useRef(new Animated.Value(1)).current;
+  // Fade animations removed
+  // const fadeAnim = useRef(new Animated.Value(0)).current;
+  // const listAnim = useRef(new Animated.Value(0)).current;
+  // const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
 
   // Load notes when search query changes
@@ -35,25 +34,10 @@ export default function NotesScreen() {
     } else {
       loadNotes();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // Fade in animation only on focus (tab switch)
-  useFocusEffect(
-    useCallback(() => {
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-      
-      // Only load notes if we don't have any yet or search is empty
-      if (notes.length === 0 || !searchQuery.trim()) {
-        loadNotes();
-      }
-    }, [])
-  );
+  // Fade animation on focus removed
 
   const loadNotes = async () => {
     try {
@@ -72,19 +56,7 @@ export default function NotesScreen() {
       });
       setNotes(sortedNotes);
       
-      // Only animate if this is the first load or we don't have notes yet
-      if (notes.length === 0) {
-        // Reset animation for initial load
-        listAnim.setValue(0);
-        Animated.timing(listAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
-      } else {
-        // If we already have notes, just set the animation value to completed state
-        listAnim.setValue(1);
-      }
+      // Animation removed
     } catch (error) {
       console.error('Error loading notes:', error);
       Alert.alert('Error', 'Failed to load notes');
@@ -134,14 +106,7 @@ export default function NotesScreen() {
   };
 
   const handleAddNote = () => {
-    // Animate content fade out smoothly before showing modal
-    Animated.timing(contentOpacityAnim, {
-      toValue: 0.7,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowNoteModal(true);
-    });
+    setShowNoteModal(true);
   };
 
   const handleSaveNote = async () => {
@@ -183,13 +148,6 @@ export default function NotesScreen() {
     setShowNoteModal(false);
     setNoteTitle("");
     setNoteContent("");
-    
-    // Animate content back to full opacity smoothly
-    Animated.timing(contentOpacityAnim, {
-      toValue: 1,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
   };
 
   // Add delete handler
@@ -217,21 +175,8 @@ export default function NotesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View 
-        style={{ 
-          flex: 1, 
-          opacity: fadeAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 1],
-          })
-        }}
-      >
-        <Animated.View 
-          style={{ 
-            flex: 1, 
-            opacity: contentOpacityAnim 
-          }}
-        >
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
         <View style={styles.header}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#8E9BA2" />
@@ -261,13 +206,10 @@ export default function NotesScreen() {
               </Text>
             </View>
           ) : (
-            <Animated.View
-              style={{ opacity: listAnim }}
-            >
+            <View>
               {notes.map((note) => (
-                <Animated.View
+                <View
                   key={note.id}
-                  style={{ opacity: listAnim }}
                 >
                   <TouchableOpacity style={styles.noteCard}>
                 <View style={styles.noteHeader}>
@@ -317,13 +259,13 @@ export default function NotesScreen() {
                   </Text>
                 </View>
                   </TouchableOpacity>
-                </Animated.View>
+                </View>
               ))}
-            </Animated.View>
+            </View>
           )}
         </ScrollView>
-        </Animated.View>
-      </Animated.View>
+        </View>
+      </View>
 
       {/* Add Note Modal */}
       <CommonModal

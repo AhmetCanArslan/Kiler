@@ -1,17 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  Animated,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Link, LinksService } from "../../database/linksService";
@@ -24,9 +22,10 @@ export default function LinksScreen() {
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
-  const listAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const contentOpacityAnim = useRef(new Animated.Value(1)).current;
+  // Fade animations removed
+  // const listAnim = useRef(new Animated.Value(0)).current;
+  // const fadeAnim = useRef(new Animated.Value(0)).current;
+  // const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
   // Load links when search query changes
   useEffect(() => {
@@ -35,25 +34,10 @@ export default function LinksScreen() {
     } else {
       loadLinks();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // Fade in animation only on focus (tab switch)
-  useFocusEffect(
-    useCallback(() => {
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-      
-      // Only load links if we don't have any yet or search is empty
-      if (links.length === 0 || !searchQuery.trim()) {
-        loadLinks();
-      }
-    }, [])
-  );
+  // Fade animation on focus removed
 
   async function loadLinks() {
     try {
@@ -69,19 +53,7 @@ export default function LinksScreen() {
       });
       setLinks(sortedLinks);
       
-      // Only animate if this is the first load or we don't have links yet
-      if (links.length === 0) {
-        // Reset animation for initial load
-        listAnim.setValue(0);
-        Animated.timing(listAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
-      } else {
-        // If we already have links, just set the animation value to completed state
-        listAnim.setValue(1);
-      }
+      // Animation removed
     } catch (error) {
       console.error('Error loading links:', error);
       Alert.alert('Error', 'Failed to load links');
@@ -129,14 +101,7 @@ export default function LinksScreen() {
   }
 
   const handleAddLink = () => {
-    // Animate content fade out smoothly before showing modal
-    Animated.timing(contentOpacityAnim, {
-      toValue: 0.7,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowLinkModal(true);
-    });
+    setShowLinkModal(true);
   };
 
   const handleSaveLink = async () => {
@@ -181,13 +146,6 @@ export default function LinksScreen() {
     setLinkTitle("");
     setLinkUrl("");
     setLinkDescription("");
-    
-    // Animate content back to full opacity smoothly
-    Animated.timing(contentOpacityAnim, {
-      toValue: 1,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
   };
 
   // Add delete handler
@@ -215,13 +173,8 @@ export default function LinksScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        <Animated.View 
-          style={{ 
-            flex: 1, 
-            opacity: contentOpacityAnim 
-          }}
-        >
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
         <View style={styles.header}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#8E9BA2" />
@@ -251,13 +204,10 @@ export default function LinksScreen() {
               </Text>
             </View>
           ) : (
-            <Animated.View
-              style={{ opacity: listAnim }}
-            >
+            <View>
               {links.map((link) => (
-                <Animated.View
+                <View
                   key={link.id}
-                  style={{ opacity: listAnim }}
                 >
                   <TouchableOpacity style={styles.linkCard}>
                 <View style={styles.linkHeader}>
@@ -307,13 +257,13 @@ export default function LinksScreen() {
                   </Text>
                 </View>
               </TouchableOpacity>
-                </Animated.View>
+                </View>
               ))}
-            </Animated.View>
+            </View>
           )}
         </ScrollView>
-        </Animated.View>
-      </Animated.View>
+        </View>
+      </View>
 
       {/* Add Link Modal */}
       <CommonModal
