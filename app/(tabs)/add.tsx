@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useRef, useState } from "react";
 import {
   Alert,
-  Animated, Modal,
+  Animated,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { CommonModal } from "../../components/CommonModal";
 import { LinksService } from "../../database/linksService";
 import { NotesService } from "../../database/notesService";
 import { PhotosService } from "../../database/photosService";
@@ -183,15 +184,20 @@ export default function AddScreen() {
     setModalVisible(true);
   };
 
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedType("");
+  };
+
   const renderAddForm = () => {
     switch (selectedType) {
       case "note":
-        return <NoteForm onClose={() => setModalVisible(false)} />;
+        return <NoteForm onClose={handleCloseModal} />;
       case "link":
-        return <LinkForm onClose={() => setModalVisible(false)} />;
+        return <LinkForm onClose={handleCloseModal} />;
       case "photo":
         return <PhotoForm 
-          onClose={() => setModalVisible(false)} 
+          onClose={handleCloseModal} 
           onTakePhoto={takePhoto}
           onPickFromGallery={pickImageFromGallery}
         />;
@@ -232,6 +238,7 @@ export default function AddScreen() {
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.quickActionsGrid}>
               <TouchableOpacity 
+                key="clipboard"
                 style={[styles.quickAction, { width: "23%" }]}
                 onPress={() => handleOptionPress("note")}
               > 
@@ -239,6 +246,7 @@ export default function AddScreen() {
                 <Text style={styles.quickActionText}>Paste from Clipboard</Text>
               </TouchableOpacity>
               <TouchableOpacity 
+                key="voice"
                 style={[styles.quickAction, { width: "23%" }]}
                 onPress={() => handleOptionPress("note")}
               > 
@@ -246,6 +254,7 @@ export default function AddScreen() {
                 <Text style={styles.quickActionText}>Voice Note</Text>
               </TouchableOpacity>
               <TouchableOpacity 
+                key="scan"
                 style={[styles.quickAction, { width: "23%" }]}
                 onPress={() => handleOptionPress("note")}
               > 
@@ -253,6 +262,7 @@ export default function AddScreen() {
                 <Text style={styles.quickActionText}>Scan Text</Text>
               </TouchableOpacity>
               <TouchableOpacity 
+                key="gallery"
                 style={[styles.quickAction, { width: "23%" }]}
                 onPress={() => handleOptionPress("photo")}
               > 
@@ -263,18 +273,12 @@ export default function AddScreen() {
           </View>
         </ScrollView>
 
-        <Modal
-          animationType="slide"
-          transparent={true}
+        <CommonModal
           visible={modalVisible}
-          onRequestClose={() => setModalVisible(false)}
+          onClose={handleCloseModal}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              {renderAddForm()}
-            </View>
-          </View>
-        </Modal>
+          {renderAddForm()}
+        </CommonModal>
       </Animated.View>
     </SafeAreaView>
   );
@@ -542,17 +546,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     textAlign: "center",
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#1A202C",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    minHeight: "60%",
   },
   formContainer: {
     padding: 20,

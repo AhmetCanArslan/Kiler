@@ -2,34 +2,34 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  Animated,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Animated,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
+import { CommonModal } from "../../components/CommonModal";
 import { Link, LinksService } from "../../database/linksService";
 
 export default function LinksScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkDescription, setLinkDescription] = useState("");
   const listAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Fade in animation on mount and focus
+  // Load links when search query changes
   useEffect(() => {
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
     if (searchQuery.trim()) {
       searchLinks();
     } else {
@@ -38,6 +38,7 @@ export default function LinksScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
+  // Fade in animation only on focus (tab switch)
   useFocusEffect(
     useCallback(() => {
       fadeAnim.setValue(0);
@@ -46,20 +47,18 @@ export default function LinksScreen() {
         duration: 400,
         useNativeDriver: true,
       }).start();
-      if (searchQuery.trim()) {
-        searchLinks();
-      } else {
+      
+      // Only load links if we don't have any yet or search is empty
+      if (links.length === 0 || !searchQuery.trim()) {
         loadLinks();
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery])
+    }, [])
   );
 
   async function loadLinks() {
     try {
       setLoading(true);
-      listAnim.setValue(0);
-      slideAnim.setValue(50);
+      
       const allLinks = await LinksService.getAllLinks();
       const sortedLinks = allLinks.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -69,18 +68,30 @@ export default function LinksScreen() {
         return dateB - dateA;
       });
       setLinks(sortedLinks);
-      Animated.parallel([
-        Animated.timing(listAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      
+      // Only animate if this is the first load or we don't have links yet
+      if (links.length === 0) {
+        // Reset animations for initial load
+        listAnim.setValue(0);
+        slideAnim.setValue(50);
+        
+        Animated.parallel([
+          Animated.timing(listAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        // If we already have links, just set the animation values to completed state
+        listAnim.setValue(1);
+        slideAnim.setValue(0);
+      }
     } catch (error) {
       console.error('Error loading links:', error);
       Alert.alert('Error', 'Failed to load links');
@@ -127,6 +138,54 @@ export default function LinksScreen() {
     }
   }
 
+  const handleAddLink = () => {
+    setShowLinkModal(true);
+  };
+
+  const handleSaveLink = async () => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Database operations are not supported on web platform");
+      return;
+    }
+    
+    if (!linkTitle.trim() || !linkUrl.trim()) {
+      Alert.alert("Error", "Please fill in both title and URL");
+      return;
+    }
+
+    try {
+      await LinksService.createLink({
+        title: linkTitle.trim(),
+        url: linkUrl.trim(),
+        description: linkDescription.trim() || undefined,
+      });
+
+      Alert.alert("Success", "Link saved successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            setShowLinkModal(false);
+            setLinkTitle("");
+            setLinkUrl("");
+            setLinkDescription("");
+            loadLinks(); // Refresh data after saving
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Error saving link:', error);
+      Alert.alert("Error", "Failed to save link. Please try again.");
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowLinkModal(false);
+    setLinkTitle("");
+    setLinkUrl("");
+    setLinkDescription("");
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
@@ -141,7 +200,7 @@ export default function LinksScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
-          <TouchableOpacity style={styles.addButton}>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddLink}>
             <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -230,6 +289,58 @@ export default function LinksScreen() {
           )}
         </ScrollView>
       </Animated.View>
+
+      {/* Add Link Modal */}
+      <CommonModal
+        visible={showLinkModal}
+        onClose={handleCloseModal}
+      >
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Save Link</Text>
+          <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#8E9BA2" />
+          </TouchableOpacity>
+        </View>
+
+        <TextInput
+          style={styles.titleInput}
+          placeholder="Link title..."
+          placeholderTextColor="#8E9BA2"
+          value={linkTitle}
+          onChangeText={setLinkTitle}
+          autoFocus={true}
+        />
+
+        <TextInput
+          style={styles.titleInput}
+          placeholder="URL..."
+          placeholderTextColor="#8E9BA2"
+          value={linkUrl}
+          onChangeText={setLinkUrl}
+          autoCapitalize="none"
+          keyboardType="url"
+        />
+
+        <TextInput
+          style={styles.contentInput}
+          placeholder="Description (optional)..."
+          placeholderTextColor="#8E9BA2"
+          value={linkDescription}
+          onChangeText={setLinkDescription}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={[styles.cancelButton, { flex: 0.4 }]} onPress={handleCloseModal}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveLink}>
+            <Text style={styles.saveButtonText}>Save Link</Text>
+          </TouchableOpacity>
+        </View>
+      </CommonModal>
     </SafeAreaView>
   );
 }
@@ -371,5 +482,73 @@ const styles = StyleSheet.create({
   linkDate: {
     fontSize: 12,
     color: "#8E9BA2",
+  },
+  // Modal styles
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#F7FAFC",
+  },
+  closeButton: {
+    padding: 4,
+  },
+  titleInput: {
+    backgroundColor: "#2D3748",
+    borderRadius: 12,
+    padding: 15,
+    color: "#F7FAFC",
+    fontSize: 16,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#4A5568",
+  },
+  contentInput: {
+    backgroundColor: "#2D3748",
+    borderRadius: 12,
+    padding: 15,
+    color: "#F7FAFC",
+    fontSize: 16,
+    textAlignVertical: "top",
+    minHeight: 120,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#4A5568",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#2D3748",
+    borderRadius: 12,
+    padding: 15,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#4A5568",
+  },
+  cancelButtonText: {
+    color: "#A0AEC0",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: "#63B3ED",
+    borderRadius: 12,
+    padding: 15,
+    alignItems: "center",
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

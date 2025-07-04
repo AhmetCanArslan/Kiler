@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
-  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -14,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { CommonModal } from "../../components/CommonModal";
 import { getDatabaseStats } from "../../database/database";
 import { LinksService } from "../../database/linksService";
 import { NotesService } from "../../database/notesService";
@@ -143,11 +143,6 @@ export default function HomeScreen() {
 
   const handleAddNote = () => {
     setShowNoteModal(true);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
   };
 
   const handleSaveNote = async () => {
@@ -172,16 +167,10 @@ export default function HomeScreen() {
         {
           text: "OK",
           onPress: () => {
-            Animated.timing(fadeAnim, {
-              toValue: 0,
-              duration: 300,
-              useNativeDriver: true,
-            }).start(() => {
-              setShowNoteModal(false);
-              setNoteTitle("");
-              setNoteContent("");
-              loadData(); // Refresh data after saving
-            });
+            setShowNoteModal(false);
+            setNoteTitle("");
+            setNoteContent("");
+            loadData(); // Refresh data after saving
           },
         },
       ]);
@@ -192,15 +181,9 @@ export default function HomeScreen() {
   };
 
   const handleCloseModal = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowNoteModal(false);
-      setNoteTitle("");
-      setNoteContent("");
-    });
+    setShowNoteModal(false);
+    setNoteTitle("");
+    setNoteContent("");
   };
 
   return (
@@ -240,7 +223,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Recent Items</Text>
             {recentItems.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.itemCard}>
+              <TouchableOpacity key={`${item.type}-${item.id}`} style={styles.itemCard}>
                 <View style={styles.itemIcon}>
                   <Ionicons
                     name={getIconName(item.type) as any}
@@ -260,19 +243,19 @@ export default function HomeScreen() {
           <View style={styles.quickActions}>
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.actionsGrid}>
-              <TouchableOpacity style={[styles.actionCard, { width: "22%" }]} onPress={handleAddNote}>
+              <TouchableOpacity key="add-note" style={[styles.actionCard, { width: "22%" }]} onPress={handleAddNote}>
                 <Ionicons name="add-circle" size={28} color="#FF6B6B" />
                 <Text style={styles.actionText}>Add Note</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+              <TouchableOpacity key="take-photo" style={[styles.actionCard, { width: "22%" }]}>
                 <Ionicons name="camera" size={28} color="#FF6B6B" />
                 <Text style={styles.actionText}>Take Photo</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+              <TouchableOpacity key="share" style={[styles.actionCard, { width: "22%" }]}>
                 <Ionicons name="share" size={28} color="#FF6B6B" />
                 <Text style={styles.actionText}>Share Item</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionCard, { width: "22%" }]}>
+              <TouchableOpacity key="search" style={[styles.actionCard, { width: "22%" }]}>
                 <Ionicons name="search" size={28} color="#FF6B6B" />
                 <Text style={styles.actionText}>Search</Text>
               </TouchableOpacity>
@@ -282,76 +265,46 @@ export default function HomeScreen() {
       </Animated.View>
 
       {/* Add Note Modal */}
-      <Modal
-        animationType="none"
-        transparent={true}
+      <CommonModal
         visible={showNoteModal}
-        onRequestClose={handleCloseModal}
+        onClose={handleCloseModal}
       >
-        <View style={styles.modalContainer}>
-          {/* Fixed backdrop with fade animation */}
-          <Animated.View 
-            style={[
-              styles.backdrop,
-              {
-                opacity: fadeAnim,
-              }
-            ]} 
-          />
-          
-          <Animated.View 
-            style={[
-              styles.modalContent,
-              {
-                transform: [
-                  {
-                    translateY: fadeAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [300, 0],
-                    }),
-                  },
-                ],
-              }
-            ]}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Note</Text>
-              <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#8E9BA2" />
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={styles.titleInput}
-              placeholder="Note title..."
-              placeholderTextColor="#8E9BA2"
-              value={noteTitle}
-              onChangeText={setNoteTitle}
-              autoFocus={true}
-            />
-
-            <TextInput
-              style={styles.contentInput}
-              placeholder="Write your thoughts, poetry, or ideas..."
-              placeholderTextColor="#8E9BA2"
-              value={noteContent}
-              onChangeText={setNoteContent}
-              multiline
-              numberOfLines={10}
-              textAlignVertical="top"
-            />
-
-            <View style={styles.modalButtons}>
-                <TouchableOpacity style={[styles.cancelButton, { flex: 0.4 }]} onPress={handleCloseModal}>
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveNote}>
-                    <Text style={styles.saveButtonText}>Save Note</Text>
-                </TouchableOpacity>
-            </View>
-          </Animated.View>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Create Note</Text>
+          <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#8E9BA2" />
+          </TouchableOpacity>
         </View>
-      </Modal>
+
+        <TextInput
+          style={styles.titleInput}
+          placeholder="Note title..."
+          placeholderTextColor="#8E9BA2"
+          value={noteTitle}
+          onChangeText={setNoteTitle}
+          autoFocus={true}
+        />
+
+        <TextInput
+          style={styles.contentInput}
+          placeholder="Write your thoughts, poetry, or ideas..."
+          placeholderTextColor="#8E9BA2"
+          value={noteContent}
+          onChangeText={setNoteContent}
+          multiline
+          numberOfLines={10}
+          textAlignVertical="top"
+        />
+
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={[styles.cancelButton, { flex: 0.4 }]} onPress={handleCloseModal}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveNote}>
+            <Text style={styles.saveButtonText}>Save Note</Text>
+          </TouchableOpacity>
+        </View>
+      </CommonModal>
     </SafeAreaView>
   );
 }
@@ -470,27 +423,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   // Modal styles
-  modalContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  backdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    backgroundColor: "#1A202C",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: "80%",
-    borderTopWidth: 1,
-    borderTopColor: "#2D3748",
-  },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
