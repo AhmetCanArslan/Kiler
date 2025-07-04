@@ -12,7 +12,7 @@ import {
 interface CommonModalProps {
   visible: boolean;
   onClose: () => void;
-  children: React.ReactNode;
+  children: React.ReactNode | ((props: { handleClose: () => void }) => React.ReactNode);
   animationType?: 'slide' | 'fade' | 'none';
 }
 
@@ -81,28 +81,46 @@ export const CommonModal: React.FC<CommonModalProps> = ({
       onRequestClose={handleClose}
       statusBarTranslucent={true}
     >
-      {/* Backdrop */}
+      {/* Backdrop: koyu ve blur (iOS için BlurView, Android için koyu yarı opak) */}
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
         activeOpacity={1}
         onPress={handleClose}
       >
-        <Animated.View
-          style={[
-            styles.backdrop,
-            {
-              opacity: backdropAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.10],
-              })
-            }
-          ]}
-        />
+        {/* iOS için BlurView, Android için koyu View */}
+        {Platform.OS === 'ios' ? (
+          <Animated.View
+            style={[
+              styles.backdrop,
+              {
+                opacity: backdropAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.18],
+                }),
+                // iOS için blur efekti
+                backdropFilter: 'blur(12px)',
+              },
+            ]}
+          />
+        ) : (
+          <Animated.View
+            style={[
+              styles.backdrop,
+              {
+                opacity: backdropAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.22],
+                }),
+                backgroundColor: 'rgba(20,24,31,0.96)',
+              },
+            ]}
+          />
+        )}
       </TouchableOpacity>
       {/* Modal Content with KeyboardAvoidingView */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 24}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+        keyboardVerticalOffset={0}
         style={{ flex: 1, justifyContent: 'flex-end' }}
       >
         <TouchableOpacity
@@ -130,7 +148,8 @@ export const CommonModal: React.FC<CommonModalProps> = ({
               }
             ]}
           >
-            {children}
+            {/* children'a handleClose fonksiyonunu prop olarak geçiyoruz */}
+            {typeof children === 'function' ? children({ handleClose }) : children}
           </Animated.View>
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -151,7 +170,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(20, 24, 31, 0.92)", // Koyu ve opak, inline verilmez
   },
   modalContent: {
-    backgroundColor: "#1A202C",
+    backgroundColor: "#1A202C", 
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -165,5 +184,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 12,
+    minHeight: 370,
   },
 });
