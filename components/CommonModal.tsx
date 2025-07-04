@@ -2,7 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import {
     Animated,
     Easing,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     StyleSheet,
     TouchableOpacity
 } from 'react-native';
@@ -43,7 +45,6 @@ export const CommonModal: React.FC<CommonModalProps> = ({
         })
       ]).start();
     } else if (!closingRef.current) {
-      // If not already closing, reset anims
       modalAnim.setValue(0);
       backdropAnim.setValue(0);
     }
@@ -66,7 +67,6 @@ export const CommonModal: React.FC<CommonModalProps> = ({
         useNativeDriver: true,
       })
     ]).start(() => {
-      // Defer state update to next tick to avoid React warning
       requestAnimationFrame(() => {
         onClose();
       });
@@ -81,33 +81,40 @@ export const CommonModal: React.FC<CommonModalProps> = ({
       onRequestClose={handleClose}
       statusBarTranslucent={true}
     >
-      <TouchableOpacity 
-        style={styles.modalContainer}
+      {/* Backdrop */}
+      <TouchableOpacity
+        style={StyleSheet.absoluteFill}
         activeOpacity={1}
         onPress={handleClose}
       >
-        {/* Daha transparan ve koyu arka plan, hafif blur efekti için uygun */}
-        <Animated.View 
+        <Animated.View
           style={[
             styles.backdrop,
             {
               opacity: backdropAnim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, 0.10], // Daha transparan
+                outputRange: [0, 0.10],
               })
             }
           ]}
         />
-        
-        {/* Modal content - prevent backdrop touch from closing */}
-        <TouchableOpacity 
+      </TouchableOpacity>
+      {/* Modal Content with KeyboardAvoidingView */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 24}
+        style={{ flex: 1, justifyContent: 'flex-end' }}
+      >
+        <TouchableOpacity
           activeOpacity={1}
-          onPress={(e) => e.stopPropagation()}
+          onPress={e => e.stopPropagation()}
+          style={{ width: '100%' }}
         >
-          <Animated.View 
+          <Animated.View
             style={[
               styles.modalContent,
               {
+                maxHeight: '70%',
                 transform: [
                   {
                     translateY: modalAnim.interpolate({
@@ -126,7 +133,7 @@ export const CommonModal: React.FC<CommonModalProps> = ({
             {children}
           </Animated.View>
         </TouchableOpacity>
-      </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -134,7 +141,6 @@ export const CommonModal: React.FC<CommonModalProps> = ({
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    justifyContent: "flex-end",
   },
   backdrop: {
     position: "absolute",
@@ -149,7 +155,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    maxHeight: "85%",
     borderTopWidth: 1,
     borderTopColor: "#2D3748",
     shadowColor: "#000",
