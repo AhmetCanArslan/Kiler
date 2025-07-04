@@ -25,7 +25,6 @@ export default function NotesScreen() {
   const [noteContent, setNoteContent] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const listAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
   const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
 
@@ -75,27 +74,16 @@ export default function NotesScreen() {
       
       // Only animate if this is the first load or we don't have notes yet
       if (notes.length === 0) {
-        // Reset animations for initial load
+        // Reset animation for initial load
         listAnim.setValue(0);
-        slideAnim.setValue(50);
-        
-        // Animate list appearance
-        Animated.parallel([
-          Animated.timing(listAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ]).start();
+        Animated.timing(listAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
       } else {
-        // If we already have notes, just set the animation values to completed state
+        // If we already have notes, just set the animation value to completed state
         listAnim.setValue(1);
-        slideAnim.setValue(0);
       }
     } catch (error) {
       console.error('Error loading notes:', error);
@@ -274,33 +262,12 @@ export default function NotesScreen() {
             </View>
           ) : (
             <Animated.View
-              style={[
-                {
-                  opacity: listAnim,
-                  transform: [
-                    {
-                      translateY: slideAnim,
-                    },
-                  ],
-                },
-              ]}
+              style={{ opacity: listAnim }}
             >
-              {notes.map((note, index) => (
+              {notes.map((note) => (
                 <Animated.View
                   key={note.id}
-                  style={[
-                    {
-                      opacity: listAnim,
-                      transform: [
-                        {
-                          translateY: slideAnim.interpolate({
-                            inputRange: [0, 50],
-                            outputRange: [0, 50 + index * 10],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
+                  style={{ opacity: listAnim }}
                 >
                   <TouchableOpacity style={styles.noteCard}>
                 <View style={styles.noteHeader}>
@@ -345,6 +312,9 @@ export default function NotesScreen() {
                       </Text>
                     ))}
                   </View>
+                  <Text style={styles.noteCreatedAt}>
+                    {formatDate(note.created_at || "")}
+                  </Text>
                 </View>
                   </TouchableOpacity>
                 </Animated.View>
@@ -524,7 +494,16 @@ const styles = StyleSheet.create({
   noteFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-end",
+  },
+  noteCreatedAt: {
+    fontSize: 10,
+    color: "#8E9BA2",
+    textAlign: "right",
+    flex: 0,
+    marginLeft: 8,
+    marginBottom: 2,
+    alignSelf: "flex-end",
   },
   tags: {
     flexDirection: "row",

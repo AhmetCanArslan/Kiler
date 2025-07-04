@@ -25,7 +25,6 @@ export default function LinksScreen() {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
   const listAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
@@ -72,26 +71,16 @@ export default function LinksScreen() {
       
       // Only animate if this is the first load or we don't have links yet
       if (links.length === 0) {
-        // Reset animations for initial load
+        // Reset animation for initial load
         listAnim.setValue(0);
-        slideAnim.setValue(50);
-        
-        Animated.parallel([
-          Animated.timing(listAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ]).start();
+        Animated.timing(listAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
       } else {
-        // If we already have links, just set the animation values to completed state
+        // If we already have links, just set the animation value to completed state
         listAnim.setValue(1);
-        slideAnim.setValue(0);
       }
     } catch (error) {
       console.error('Error loading links:', error);
@@ -263,33 +252,12 @@ export default function LinksScreen() {
             </View>
           ) : (
             <Animated.View
-              style={[
-                {
-                  opacity: listAnim,
-                  transform: [
-                    {
-                      translateY: slideAnim,
-                    },
-                  ],
-                },
-              ]}
+              style={{ opacity: listAnim }}
             >
-              {links.map((link, index) => (
+              {links.map((link) => (
                 <Animated.View
                   key={link.id}
-                  style={[
-                    {
-                      opacity: listAnim,
-                      transform: [
-                        {
-                          translateY: slideAnim.interpolate({
-                            inputRange: [0, 50],
-                            outputRange: [0, 50 + index * 10],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
+                  style={{ opacity: listAnim }}
                 >
                   <TouchableOpacity style={styles.linkCard}>
                 <View style={styles.linkHeader}>
