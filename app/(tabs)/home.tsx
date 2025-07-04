@@ -243,42 +243,59 @@ export default function HomeScreen() {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Recent Items</Text>
-            {recentItems.map((item) => (
-              <TouchableOpacity key={`${item.type}-${item.id}`} style={styles.itemCard}>
-                <View style={styles.itemIcon}>
-                  <Ionicons
-                    name={getIconName(item.type) as any}
-                    size={20}
-                    color="#FF6B6B"
-                  />
-                </View>
-                <View style={styles.itemContent}>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                  <Text style={styles.itemDate}>{item.date}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#8E9BA2" />
-              </TouchableOpacity>
-            ))}
+            {recentItems.map((item) => {
+              let icon, color;
+              if (item.type === 'note') {
+                icon = 'document-text';
+                color = '#68D391';
+              } else if (item.type === 'link') {
+                icon = 'link';
+                color = '#63B3ED';
+              } else if (item.type === 'photo') {
+                icon = 'image';
+                color = '#F6AD55';
+              } else {
+                icon = 'document';
+                color = '#8E9BA2';
+              }
+              return (
+                <TouchableOpacity key={`${item.type}-${item.id}`} style={styles.itemCard}>
+                  <View style={[styles.itemIcon, { backgroundColor: color, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 6, elevation: 6, borderWidth: 2, borderColor: 'rgba(0,0,0,0.18)' }]}> 
+                    <Ionicons
+                      name={icon as any}
+                      size={22}
+                      color="#fff"
+                      style={{ textShadowColor: '#222', textShadowRadius: 6, textShadowOffset: { width: 0, height: 2 } }}
+                    />
+                  </View>
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemDate}>{item.date}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#8E9BA2" />
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <View style={styles.quickActions}>
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.actionsGrid}>
-              <TouchableOpacity key="add-note" style={[styles.actionCard, { width: "22%" }]} onPress={handleAddNote}>
-                <Ionicons name="add-circle" size={28} color="#FF6B6B" />
-                <Text style={styles.actionText}>Add Note</Text>
+              <TouchableOpacity key="add-note" style={[styles.actionCard, { width: "22%", backgroundColor: "#68D391", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }] } onPress={handleAddNote}>
+              <Ionicons name="add-circle" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Add Note</Text>
               </TouchableOpacity>
-              <TouchableOpacity key="take-photo" style={[styles.actionCard, { width: "22%" }]}>
-                <Ionicons name="camera" size={28} color="#FF6B6B" />
-                <Text style={styles.actionText}>Take Photo</Text>
+              <TouchableOpacity key="take-photo" style={[styles.actionCard, { width: "22%", backgroundColor: "#F6AD55", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]}>
+              <Ionicons name="camera" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Take Photo</Text>
               </TouchableOpacity>
-              <TouchableOpacity key="share" style={[styles.actionCard, { width: "22%" }]}>
-                <Ionicons name="share" size={28} color="#FF6B6B" />
-                <Text style={styles.actionText}>Share Item</Text>
+              <TouchableOpacity key="add-link" style={[styles.actionCard, { width: "22%", backgroundColor: "#63B3ED", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]}>
+              <Ionicons name="link" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Add Link</Text>
               </TouchableOpacity>
-              <TouchableOpacity key="search" style={[styles.actionCard, { width: "22%" }]}>
-                <Ionicons name="search" size={28} color="#FF6B6B" />
-                <Text style={styles.actionText}>Search</Text>
+              <TouchableOpacity key="search" style={[styles.actionCard, { width: "22%", backgroundColor: "#2D3748", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]}>
+              <Ionicons name="search" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Search</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -399,13 +416,18 @@ const styles = StyleSheet.create({
     borderColor: "#2D3748",
   },
   itemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FF6B6B",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    // Extra contrast for modal overlay
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.18)',
   },
   itemContent: {
     flex: 1,
