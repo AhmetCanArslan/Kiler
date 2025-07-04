@@ -48,6 +48,7 @@ export default function HomeScreen() {
   });
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const screenFadeAnim = useRef(new Animated.Value(0)).current;
+  const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
   // Load data on component mount
   useEffect(() => {
@@ -142,7 +143,14 @@ export default function HomeScreen() {
   };
 
   const handleAddNote = () => {
-    setShowNoteModal(true);
+    // Animate content fade out smoothly before showing modal
+    Animated.timing(contentOpacityAnim, {
+      toValue: 0.7,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowNoteModal(true);
+    });
   };
 
   const handleSaveNote = async () => {
@@ -184,12 +192,25 @@ export default function HomeScreen() {
     setShowNoteModal(false);
     setNoteTitle("");
     setNoteContent("");
+    
+    // Animate content back to full opacity smoothly
+    Animated.timing(contentOpacityAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={{ flex: 1, opacity: screenFadeAnim }}>
-        <ScrollView style={styles.content}>
+        <Animated.View 
+          style={{ 
+            flex: 1, 
+            opacity: contentOpacityAnim 
+          }}
+        >
+          <ScrollView style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.greeting}>Kiler</Text>
             <Text style={styles.subtitle}>Your digital poetry archive</Text>
@@ -262,6 +283,7 @@ export default function HomeScreen() {
             </View>
           </View>
         </ScrollView>
+        </Animated.View>
       </Animated.View>
 
       {/* Add Note Modal */}

@@ -24,6 +24,7 @@ export default function AddScreen() {
   const [selectedType, setSelectedType] = useState("");
   // Home ekranındaki gibi fade animasyonu
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
   // Ekran mount olduğunda ve focus olduğunda animasyonu başlat
 
@@ -180,13 +181,27 @@ export default function AddScreen() {
   ];
 
   const handleOptionPress = (type: string) => {
-    setSelectedType(type);
-    setModalVisible(true);
+    // Animate content fade out smoothly before showing modal
+    Animated.timing(contentOpacityAnim, {
+      toValue: 0.7,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setSelectedType(type);
+      setModalVisible(true);
+    });
   };
 
   const handleCloseModal = () => {
     setModalVisible(false);
     setSelectedType("");
+    
+    // Animate content back to full opacity smoothly
+    Animated.timing(contentOpacityAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
   };
 
   const renderAddForm = () => {

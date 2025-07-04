@@ -27,6 +27,7 @@ export default function LinksScreen() {
   const listAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
   // Load links when search query changes
   useEffect(() => {
@@ -139,7 +140,14 @@ export default function LinksScreen() {
   }
 
   const handleAddLink = () => {
-    setShowLinkModal(true);
+    // Animate content fade out smoothly before showing modal
+    Animated.timing(contentOpacityAnim, {
+      toValue: 0.7,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowLinkModal(true);
+    });
   };
 
   const handleSaveLink = async () => {
@@ -184,11 +192,24 @@ export default function LinksScreen() {
     setLinkTitle("");
     setLinkUrl("");
     setLinkDescription("");
+    
+    // Animate content back to full opacity smoothly
+    Animated.timing(contentOpacityAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <Animated.View 
+          style={{ 
+            flex: 1, 
+            opacity: contentOpacityAnim 
+          }}
+        >
         <View style={styles.header}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#8E9BA2" />
@@ -288,6 +309,7 @@ export default function LinksScreen() {
             </Animated.View>
           )}
         </ScrollView>
+        </Animated.View>
       </Animated.View>
 
       {/* Add Link Modal */}

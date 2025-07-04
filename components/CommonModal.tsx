@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
     Animated,
+    Easing,
     Modal,
     StyleSheet,
     TouchableOpacity
@@ -20,29 +21,60 @@ export const CommonModal: React.FC<CommonModalProps> = ({
   animationType = 'none',
 }) => {
   const modalAnim = useRef(new Animated.Value(0)).current;
+  const backdropAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      Animated.timing(modalAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      // Animate both modal and backdrop in with smooth easing
+      Animated.parallel([
+        Animated.timing(modalAnim, {
+          toValue: 1,
+          duration: 350,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        })
+      ]).start();
     } else {
-      Animated.timing(modalAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      // Animate both modal and backdrop out smoothly
+      Animated.parallel([
+        Animated.timing(modalAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        })
+      ]).start();
     }
-  }, [visible, modalAnim]);
+  }, [visible, modalAnim, backdropAnim]);
 
   const handleClose = () => {
-    Animated.timing(modalAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
+    // Smooth close animation with proper callback
+    Animated.parallel([
+      Animated.timing(modalAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 0,
+        duration: 200,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      })
+    ]).start(() => {
       onClose();
     });
   };
@@ -53,18 +85,22 @@ export const CommonModal: React.FC<CommonModalProps> = ({
       transparent={true}
       visible={visible}
       onRequestClose={handleClose}
+      statusBarTranslucent={true}
     >
       <TouchableOpacity 
         style={styles.modalContainer}
         activeOpacity={1}
         onPress={handleClose}
       >
-        {/* Backdrop with fade animation */}
+        {/* More transparent backdrop with smooth fade animation */}
         <Animated.View 
           style={[
             styles.backdrop,
             {
-              opacity: modalAnim,
+              opacity: backdropAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 0.15],
+              }),
             }
           ]} 
         />
@@ -82,10 +118,14 @@ export const CommonModal: React.FC<CommonModalProps> = ({
                   {
                     translateY: modalAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [300, 0],
+                      outputRange: [350, 0],
                     }),
                   },
                 ],
+                opacity: modalAnim.interpolate({
+                  inputRange: [0, 0.3, 1],
+                  outputRange: [0, 0.5, 1],
+                }),
               }
             ]}
           >
@@ -108,15 +148,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 1)",
   },
   modalContent: {
     backgroundColor: "#1A202C",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: "80%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: "85%",
     borderTopWidth: 1,
     borderTopColor: "#2D3748",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 12,
   },
 });

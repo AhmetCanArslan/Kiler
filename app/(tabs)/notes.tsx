@@ -26,6 +26,7 @@ export default function NotesScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const listAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+  const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
 
   // Load notes when search query changes
@@ -145,7 +146,14 @@ export default function NotesScreen() {
   };
 
   const handleAddNote = () => {
-    setShowNoteModal(true);
+    // Animate content fade out smoothly before showing modal
+    Animated.timing(contentOpacityAnim, {
+      toValue: 0.7,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowNoteModal(true);
+    });
   };
 
   const handleSaveNote = async () => {
@@ -187,12 +195,33 @@ export default function NotesScreen() {
     setShowNoteModal(false);
     setNoteTitle("");
     setNoteContent("");
+    
+    // Animate content back to full opacity smoothly
+    Animated.timing(contentOpacityAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
   };
 
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <Animated.View 
+        style={{ 
+          flex: 1, 
+          opacity: fadeAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 1],
+          })
+        }}
+      >
+        <Animated.View 
+          style={{ 
+            flex: 1, 
+            opacity: contentOpacityAnim 
+          }}
+        >
         <View style={styles.header}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#8E9BA2" />
@@ -293,6 +322,7 @@ export default function NotesScreen() {
             </Animated.View>
           )}
         </ScrollView>
+        </Animated.View>
       </Animated.View>
 
       {/* Add Note Modal */}
