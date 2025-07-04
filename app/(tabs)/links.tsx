@@ -2,16 +2,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Link, LinksService } from "../../database/linksService";
@@ -201,6 +201,29 @@ export default function LinksScreen() {
     }).start();
   };
 
+  // Add delete handler
+  const handleDeleteLink = (linkId: number) => {
+    Alert.alert(
+      'Delete Link',
+      'Are you sure you want to delete this link?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await LinksService.deleteLink(linkId);
+              setLinks((prev) => prev.filter((l) => l.id !== linkId));
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete link');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
@@ -277,30 +300,42 @@ export default function LinksScreen() {
                     <Text style={styles.linkTitle}>{link.title}</Text>
                     <Text style={styles.linkUrl}>{link.url}</Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.favoriteButton}
-                    onPress={() => toggleFavorite(link.id!)}
-                  >
-                    <Ionicons 
-                      name={link.is_favorite ? "heart" : "heart-outline"} 
-                      size={18} 
-                      color={link.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
-                    />
-                  </TouchableOpacity>
+                  <View style={{ alignItems: 'center' }}>
+                    <TouchableOpacity
+                      style={styles.favoriteButton}
+                      onPress={() => toggleFavorite(link.id!)}
+                    >
+                      <Ionicons
+                        name={link.is_favorite ? "heart" : "heart-outline"}
+                        size={16}
+                        color={link.is_favorite ? "#FF6B6B" : "#8E9BA2"}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteLink(link.id!)}
+                    >
+                      <Ionicons name="trash" size={16} color="#FF6B6B" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                
-                <Text style={styles.linkDescription}>{link.description || "No description available"}</Text>
-                
+                <Text style={styles.linkDescription} numberOfLines={2}>
+                  {link.description || "No description"}
+                </Text>
                 <View style={styles.linkFooter}>
                   <View style={styles.tags}>
-                    {(link.tags || []).map((tag, index) => (
+                    {(link.tags || []).slice(0, 2).map((tag, index) => (
                       <Text key={index} style={styles.tag}>
                         #{tag}
                       </Text>
                     ))}
                   </View>
                   <Text style={styles.linkDate}>
-                    {formatDate(link.updated_at || link.created_at || "")}
+                    {formatDate(
+                      link.updated_at ||
+                        link.created_at ||
+                        ""
+                    )}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -448,6 +483,10 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     padding: 8,
+  },
+  deleteButton: {
+    padding: 8,
+    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,

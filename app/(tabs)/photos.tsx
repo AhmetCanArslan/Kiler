@@ -143,6 +143,28 @@ export default function PhotosScreen() {
     }
   };
 
+  // Add delete handler
+  const handleDeletePhoto = (photoId: number) => {
+    Alert.alert(
+      'Delete Photo',
+      'Are you sure you want to delete this photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await PhotosService.deletePhoto(photoId);
+              setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete photo');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -223,16 +245,24 @@ export default function PhotosScreen() {
                         </Text>
                       </View>
                     </View>
-                    <TouchableOpacity
-                      style={styles.favoriteButton}
-                      onPress={() => toggleFavorite(photo.id!)}
-                    >
-                      <Ionicons
-                        name={photo.is_favorite ? "heart" : "heart-outline"}
-                        size={16}
-                        color={photo.is_favorite ? "#FF6B6B" : "#8E9BA2"}
-                      />
-                    </TouchableOpacity>
+                    <View style={{ position: 'absolute', top: 8, right: 8, alignItems: 'center' }}>
+                      <TouchableOpacity
+                        style={styles.favoriteButton}
+                        onPress={() => toggleFavorite(photo.id!)}
+                      >
+                        <Ionicons
+                          name={photo.is_favorite ? "heart" : "heart-outline"}
+                          size={16}
+                          color={photo.is_favorite ? "#FF6B6B" : "#8E9BA2"}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => handleDeletePhoto(photo.id!)}
+                      >
+                        <Ionicons name="trash" size={16} color="#FF6B6B" />
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
                 </Animated.View>
               ))}
@@ -360,6 +390,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: 12,
     padding: 6,
+  },
+  deleteButton: {
+    padding: 8,
+    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,

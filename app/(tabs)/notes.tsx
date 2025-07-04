@@ -204,6 +204,28 @@ export default function NotesScreen() {
     }).start();
   };
 
+  // Add delete handler
+  const handleDeleteNote = (noteId: number) => {
+    Alert.alert(
+      'Delete Note',
+      'Are you sure you want to delete this note?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await NotesService.deleteNote(noteId);
+              setNotes((prev) => prev.filter((n) => n.id !== noteId));
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete note');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -291,16 +313,24 @@ export default function NotesScreen() {
                       {note.word_count || 0} words • {formatDate(note.updated_at || note.created_at || "")}
                     </Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.favoriteButton}
-                    onPress={() => toggleFavorite(note.id!)}
-                  >
-                    <Ionicons 
-                      name={note.is_favorite ? "heart" : "heart-outline"} 
-                      size={18} 
-                      color={note.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
-                    />
-                  </TouchableOpacity>
+                  <View style={{ alignItems: 'center' }}>
+                    <TouchableOpacity 
+                      style={styles.favoriteButton}
+                      onPress={() => toggleFavorite(note.id!)}
+                    >
+                      <Ionicons 
+                        name={note.is_favorite ? "heart" : "heart-outline"} 
+                        size={18} 
+                        color={note.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteNote(note.id!)}
+                    >
+                      <Ionicons name="trash" size={18} color="#FF6B6B" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 
                 <Text style={styles.noteContent} numberOfLines={3}>
@@ -451,6 +481,10 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     padding: 8,
+  },
+  deleteButton: {
+    padding: 8,
+    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,
