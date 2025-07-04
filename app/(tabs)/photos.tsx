@@ -24,17 +24,10 @@ export default function PhotosScreen() {
   const [loading, setLoading] = useState(true);
   const listAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
-
-
-  // Fade in animation on mount and focus
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Load photos when search query changes
   useEffect(() => {
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
     if (searchQuery.trim()) {
       searchPhotos();
     } else {
@@ -43,6 +36,7 @@ export default function PhotosScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
+  // Fade in animation only on focus (tab switch)
   useFocusEffect(
     useCallback(() => {
       fadeAnim.setValue(0);
@@ -51,21 +45,18 @@ export default function PhotosScreen() {
         duration: 400,
         useNativeDriver: true,
       }).start();
-      if (searchQuery.trim()) {
-        searchPhotos();
-      } else {
+      
+      // Only load photos if we don't have any yet or search is empty
+      if (photos.length === 0 || !searchQuery.trim()) {
         loadPhotos();
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery])
+    }, [])
   );
+
 
   const loadPhotos = async () => {
     try {
       setLoading(true);
-      // Reset animations
-      listAnim.setValue(0);
-      slideAnim.setValue(50);
       
       const allPhotos = await PhotosService.getAllPhotos();
       // Sort photos: favorites first, then by updated_at desc
@@ -80,19 +71,30 @@ export default function PhotosScreen() {
       });
       setPhotos(sortedPhotos);
       
-      // Animate list appearance
-      Animated.parallel([
-        Animated.timing(listAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // Only animate if this is the first load or we don't have photos yet
+      if (photos.length === 0) {
+        // Reset animations for initial load
+        listAnim.setValue(0);
+        slideAnim.setValue(50);
+        
+        // Animate list appearance
+        Animated.parallel([
+          Animated.timing(listAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        // If we already have photos, just set the animation values to completed state
+        listAnim.setValue(1);
+        slideAnim.setValue(0);
+      }
     } catch (error) {
       console.error('Error loading photos:', error);
       Alert.alert('Error', 'Failed to load photos');

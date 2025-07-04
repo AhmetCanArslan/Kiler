@@ -125,19 +125,31 @@ export default function AddScreen() {
           <View style={styles.recentSection}>
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.quickActionsGrid}>
-              <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}> 
+              <TouchableOpacity 
+                style={[styles.quickAction, { width: "23%" }]}
+                onPress={() => handleOptionPress("note")}
+              > 
                 <Ionicons name="copy" size={28} color="#FF6B6B" />
                 <Text style={styles.quickActionText}>Paste from Clipboard</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}> 
+              <TouchableOpacity 
+                style={[styles.quickAction, { width: "23%" }]}
+                onPress={() => handleOptionPress("note")}
+              > 
                 <Ionicons name="mic" size={28} color="#FF6B6B" />
                 <Text style={styles.quickActionText}>Voice Note</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}> 
+              <TouchableOpacity 
+                style={[styles.quickAction, { width: "23%" }]}
+                onPress={() => handleOptionPress("note")}
+              > 
                 <Ionicons name="scan" size={28} color="#FF6B6B" />
                 <Text style={styles.quickActionText}>Scan Text</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.quickAction, { width: "23%" }]}> 
+              <TouchableOpacity 
+                style={[styles.quickAction, { width: "23%" }]}
+                onPress={() => handleOptionPress("photo")}
+              > 
                 <Ionicons name="library" size={28} color="#FF6B6B" />
                 <Text style={styles.quickActionText}>From Gallery</Text>
               </TouchableOpacity>

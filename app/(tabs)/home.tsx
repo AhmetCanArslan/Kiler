@@ -2,17 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { getDatabaseStats } from "../../database/database";
 import { LinksService } from "../../database/linksService";
@@ -49,7 +49,7 @@ export default function HomeScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const screenFadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Load data on component mount and when screen comes into focus
+  // Load data on component mount
   useEffect(() => {
     loadData();
     Animated.timing(screenFadeAnim, {
@@ -59,10 +59,9 @@ export default function HomeScreen() {
     }).start();
   }, []);
 
-  // Refresh data when screen comes into focus
+  // Only fade animation when screen comes into focus, avoid duplicate data loading
   useFocusEffect(
     useCallback(() => {
-      loadData();
       screenFadeAnim.setValue(0);
       Animated.timing(screenFadeAnim, {
         toValue: 1,

@@ -24,18 +24,13 @@ export default function NotesScreen() {
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const modalAnim = useRef(new Animated.Value(0)).current;
   const listAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
 
-  // Fade in animation on mount and focus
+  // Load notes when search query changes
   useEffect(() => {
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
     if (searchQuery.trim()) {
       searchNotes();
     } else {
@@ -44,6 +39,7 @@ export default function NotesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
+  // Fade in animation only on focus (tab switch)
   useFocusEffect(
     useCallback(() => {
       fadeAnim.setValue(0);
@@ -52,21 +48,17 @@ export default function NotesScreen() {
         duration: 400,
         useNativeDriver: true,
       }).start();
-      if (searchQuery.trim()) {
-        searchNotes();
-      } else {
+      
+      // Only load notes if we don't have any yet or search is empty
+      if (notes.length === 0 || !searchQuery.trim()) {
         loadNotes();
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery])
+    }, [])
   );
 
   const loadNotes = async () => {
     try {
       setLoading(true);
-      // Reset animations
-      listAnim.setValue(0);
-      slideAnim.setValue(50);
       
       const allNotes = await NotesService.getAllNotes();
       // Sort notes: favorites first, then by updated_at desc
@@ -81,19 +73,30 @@ export default function NotesScreen() {
       });
       setNotes(sortedNotes);
       
-      // Animate list appearance
-      Animated.parallel([
-        Animated.timing(listAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // Only animate if this is the first load or we don't have notes yet
+      if (notes.length === 0) {
+        // Reset animations for initial load
+        listAnim.setValue(0);
+        slideAnim.setValue(50);
+        
+        // Animate list appearance
+        Animated.parallel([
+          Animated.timing(listAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        // If we already have notes, just set the animation values to completed state
+        listAnim.setValue(1);
+        slideAnim.setValue(0);
+      }
     } catch (error) {
       console.error('Error loading notes:', error);
       Alert.alert('Error', 'Failed to load notes');
@@ -144,7 +147,7 @@ export default function NotesScreen() {
 
   const handleAddNote = () => {
     setShowNoteModal(true);
-    Animated.timing(fadeAnim, {
+    Animated.timing(modalAnim, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
@@ -173,7 +176,7 @@ export default function NotesScreen() {
         {
           text: "OK",
           onPress: () => {
-            Animated.timing(fadeAnim, {
+            Animated.timing(modalAnim, {
               toValue: 0,
               duration: 300,
               useNativeDriver: true,
@@ -193,7 +196,7 @@ export default function NotesScreen() {
   };
 
   const handleCloseModal = () => {
-    Animated.timing(fadeAnim, {
+    Animated.timing(modalAnim, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
@@ -323,7 +326,7 @@ export default function NotesScreen() {
             style={[
               styles.backdrop,
               {
-                opacity: fadeAnim,
+                opacity: modalAnim,
               }
             ]} 
           />
@@ -334,7 +337,7 @@ export default function NotesScreen() {
               {
                 transform: [
                   {
-                    translateY: fadeAnim.interpolate({
+                    translateY: modalAnim.interpolate({
                       inputRange: [0, 1],
                       outputRange: [300, 0],
                     }),
