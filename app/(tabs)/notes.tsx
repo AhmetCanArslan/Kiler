@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -343,6 +344,17 @@ export default function NotesScreen() {
     }
   }, [editNoteTitle, editNoteContent, editingNote, loadNotes]);
 
+  const handleCopyNote = useCallback(async (note: Note) => {
+    try {
+      await Clipboard.setStringAsync(note.content);
+      // Show a simple toast-like alert that dismisses automatically
+      Alert.alert("Copied to clipboard", "", [{ text: "OK" }], { cancelable: true });
+    } catch (error) {
+      console.error('Error copying note:', error);
+      Alert.alert("Error", "Failed to copy note content");
+    }
+  }, []);
+
   const handleDeleteNote = useCallback((noteId: number) => {
     Alert.alert(
       'Delete Note',
@@ -437,6 +449,9 @@ export default function NotesScreen() {
                 color={item.is_favorite ? "#FF6B6B" : "#8E9BA2"}
               />
             </TouchableOpacity>
+            <TouchableOpacity style={styles.copyButton} onPress={() => handleCopyNote(item)}>
+              <Ionicons name="copy-outline" size={20} color="#4FACFE" />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.editButton} onPress={() => handleEditNote(item)}>
               <Ionicons name="create-outline" size={20} color="#68D391" />
             </TouchableOpacity>
@@ -456,7 +471,7 @@ export default function NotesScreen() {
         </View>
       </Animated.View>
     );
-  }, [noteAnims, toggleFavorite, handleEditNote, handleDeleteNote]);
+  }, [noteAnims, toggleFavorite, handleCopyNote, handleEditNote, handleDeleteNote]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -668,6 +683,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   favoriteButton: {
+    padding: 8,
+  },
+  copyButton: {
     padding: 8,
   },
   editButton: {
