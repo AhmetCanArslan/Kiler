@@ -334,11 +334,15 @@ export default function LinksScreen() {
     }
 
     try {
-      const success = await LinksService.updateLink(editingLink.id, {
+      // Always include description field to ensure it can be cleared
+      const updateData = {
         title: editLinkTitle.trim(),
         url: editLinkUrl.trim(),
-        description: editLinkDescription.trim() || undefined,
-      });
+        description: editLinkDescription.trim() || null // Use null for empty strings
+      };
+      
+      console.log('Updating link with data:', updateData); // Debug log
+      const success = await LinksService.updateLink(editingLink.id, updateData);
 
       if (success) {
         handleCloseEditModal();

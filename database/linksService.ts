@@ -27,7 +27,7 @@ export interface LinkCreate {
 export interface LinkUpdate {
   title?: string;
   url?: string;
-  description?: string;
+  description?: string | null;
   tags?: string[];
   is_favorite?: boolean;
 }
@@ -186,7 +186,7 @@ export class LinksService {
       
       if (updates.description !== undefined) {
         setClauses.push('description = ?');
-        values.push(updates.description || '');
+        values.push(updates.description || ''); // Handle null by converting to empty string
       }
       
       if (updates.tags !== undefined) {
