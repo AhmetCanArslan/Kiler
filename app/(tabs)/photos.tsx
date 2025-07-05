@@ -538,28 +538,44 @@ function PhotosScreen() {
           alignItems: 'center',
           zIndex: 100,
         }}>
+          {/* Tap outside to close */}
           <TouchableOpacity
-            style={{ position: 'absolute', top: 40, right: 30, zIndex: 101 }}
-            onPress={() => setPreviewPhoto(null)}
-          >
-            <Ionicons name="close-circle" size={40} color="#fff" />
-          </TouchableOpacity>
-          <Image
-            source={{ uri: previewPhoto.file_path }}
+            activeOpacity={1}
             style={{
-              width: '90%',
-              height: '70%',
-              borderRadius: 18,
-              resizeMode: 'contain',
-              backgroundColor: '#222',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 99,
             }}
+            onPress={() => setPreviewPhoto(null)}
           />
-          <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 18 }} numberOfLines={2}>{previewPhoto.title}</Text>
-          {stripPhotoTakenOn(previewPhoto.description) !== 'No description' && (
-            <Text style={{ color: '#ccc', fontSize: 14, marginTop: 6, marginBottom: 10, textAlign: 'center', maxWidth: '90%' }} numberOfLines={3}>
-              {stripPhotoTakenOn(previewPhoto.description)}
-            </Text>
-          )}
+          {/* Modal content */}
+          <View style={{ zIndex: 100, alignItems: 'center', width: '100%' }}>
+            <TouchableOpacity
+              style={{ position: 'absolute', top: 40, right: 30, zIndex: 101 }}
+              onPress={() => setPreviewPhoto(null)}
+            >
+              <Ionicons name="close-circle" size={40} color="#fff" />
+            </TouchableOpacity>
+            <Image
+              source={{ uri: previewPhoto.file_path }}
+              style={{
+                width: '90%',
+                height: '70%',
+                borderRadius: 18,
+                resizeMode: 'contain',
+                backgroundColor: '#222',
+              }}
+            />
+            <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 18 }} numberOfLines={2}>{previewPhoto.title}</Text>
+            {stripPhotoTakenOn(previewPhoto.description) !== 'No description' && (
+              <Text style={{ color: '#ccc', fontSize: 14, marginTop: 6, marginBottom: 10, textAlign: 'center', maxWidth: '90%' }} numberOfLines={3}>
+                {stripPhotoTakenOn(previewPhoto.description)}
+              </Text>
+            )}
+          </View>
         </View>
       )}
     </SafeAreaView>
