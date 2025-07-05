@@ -569,11 +569,16 @@ function PhotosScreen() {
               showsVerticalScrollIndicator={false}
               showsHorizontalScrollIndicator={false}
               scrollEnabled={true}
-              // disables horizontal scroll to prevent tab switching
-              // disables horizontal scroll to prevent accidental tab switch
             >
               <View style={{ width: '100%', height: Dimensions.get('window').height * 0.7, alignItems: 'center', justifyContent: 'center' }}>
-                {/* <ZoomableImage uri={previewPhoto.file_path} style={{ width: '90%', height: '100%' }} /> */}
+                {previewPhoto.file_path ? (
+                  <Image
+                    source={{ uri: previewPhoto.file_path }}
+                    style={{ width: '90%', height: '100%', borderRadius: 18, resizeMode: 'contain', backgroundColor: '#222' }}
+                  />
+                ) : (
+                  <Ionicons name="image" size={64} color="#8E9BA2" />
+                )}
               </View>
             </ScrollView>
             <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 18 }} numberOfLines={2}>{previewPhoto.title}</Text>
