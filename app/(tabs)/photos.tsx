@@ -120,11 +120,39 @@ function PhotosScreen() {
     return date.toLocaleDateString();
   };
 
+  // Animate slide for all items to new positions, then update data
+  const animateReorder = async (newOrder: Photo[]) => {
+    const prevPositions = photos.map((p, idx) => ({ id: p.id, idx }));
+    newOrder.forEach((photo, idx) => {
+      if (typeof photo.id === 'number') {
+        const prev = prevPositions.find(p => p.id === photo.id);
+        if (prev && prev.idx !== idx && photoAnims[photo.id]) {
+          photoAnims[photo.id].translateY.setValue((prev.idx - idx) * (imageSize + 20));
+          Animated.spring(photoAnims[photo.id].translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      }
+    });
+    // Wait for animation to finish before updating data
+    await new Promise(res => setTimeout(res, 350));
+    setPhotos(newOrder);
+  };
+
   const toggleFavorite = async (photoId: number) => {
     try {
       await PhotosService.toggleFavorite(photoId);
-      // Sıralama değişirse animasyon başlat
-      await animateListChange();
+      // Get new sorted order
+      const allPhotos = await PhotosService.getAllPhotos();
+      const sortedPhotos = allPhotos.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      await animateReorder(sortedPhotos);
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
@@ -142,68 +170,41 @@ function PhotosScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            // Fade out animasyonu
-            Animated.timing(photoAnims[photoId]?.opacity || new Animated.Value(1), {
-              toValue: 0,
-              duration: 350,
-              useNativeDriver: true,
-            }).start(async () => {
-              try {
-                await PhotosService.deletePhoto(photoId);
-                await animateListChange(photoId);
-              } catch (error) {
-                Alert.alert('Error', 'Failed to delete photo');
-              }
+            // Fade out animation
+            await new Promise(res => {
+              Animated.timing(photoAnims[photoId]?.opacity || new Animated.Value(1), {
+                toValue: 0,
+                duration: 350,
+                useNativeDriver: true,
+              }).start(() => res(null));
             });
+            try {
+              await PhotosService.deletePhoto(photoId);
+              // Remove from data and animate slide
+              const allPhotos = await PhotosService.getAllPhotos();
+              const sortedPhotos = allPhotos.sort((a, b) => {
+                if (a.is_favorite && !b.is_favorite) return -1;
+                if (!a.is_favorite && b.is_favorite) return 1;
+                const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+                const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+                return dateB - dateA;
+              });
+              await animateReorder(sortedPhotos);
+              setPhotoAnims(prev => {
+                const copy = { ...prev };
+                delete copy[photoId];
+                return copy;
+              });
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete photo');
+            }
           },
         },
       ]
     );
   };
 
-  // Liste sıralaması değiştiğinde slide animasyonu uygula
-  const animateListChange = async (deletedId?: number) => {
-    // Save previous positions
-    const prevPositions = photos.map((p, idx) => ({ id: p.id, idx }));
-    // Load new photos and update state
-    let newPhotos: Photo[] = [];
-    try {
-      setLoading(true);
-      const allPhotos = await PhotosService.getAllPhotos();
-      newPhotos = allPhotos.sort((a, b) => {
-        if (a.is_favorite && !b.is_favorite) return -1;
-        if (!a.is_favorite && b.is_favorite) return 1;
-        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
-        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
-        return dateB - dateA;
-      });
-      setPhotos(newPhotos);
-    } finally {
-      setLoading(false);
-    }
-    setTimeout(() => {
-      newPhotos.forEach((photo, idx) => {
-        if (typeof photo.id === 'number') {
-          const prev = prevPositions.find(p => p.id === photo.id);
-          if (prev && prev.idx !== idx && photoAnims[photo.id]) {
-            photoAnims[photo.id].translateY.setValue((prev.idx - idx) * (imageSize + 20));
-            Animated.spring(photoAnims[photo.id].translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-            }).start();
-          }
-        }
-      });
-      // Remove anim for deleted item
-      if (deletedId) {
-        setPhotoAnims(prev => {
-          const copy = { ...prev };
-          delete copy[deletedId];
-          return copy;
-        });
-      }
-    }, 50);
-  };
+  // (No longer needed, replaced by animateReorder)
 
   return (
     <SafeAreaView style={styles.container}>

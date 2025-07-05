@@ -121,53 +121,39 @@ export default function NotesScreen() {
     return date.toLocaleDateString();
   };
 
-  const animateListChange = async (deletedId?: number) => {
-    // Save previous positions
+  // Animate slide for all items to new positions, then update data
+  const animateReorder = async (newOrder: Note[]) => {
     const prevPositions = notes.map((n, idx) => ({ id: n.id, idx }));
-    // Load new notes and update state
-    let newNotes: Note[] = [];
+    newOrder.forEach((note, idx) => {
+      if (typeof note.id === 'number') {
+        const prev = prevPositions.find(p => p.id === note.id);
+        if (prev && prev.idx !== idx && noteAnims[note.id]) {
+          noteAnims[note.id].translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
+          Animated.spring(noteAnims[note.id].translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      }
+    });
+    // Wait for animation to finish before updating data
+    await new Promise(res => setTimeout(res, 350));
+    setNotes(newOrder);
+  };
+
+  const toggleFavorite = async (noteId: number) => {
     try {
-      setLoading(true);
+      await NotesService.toggleFavorite(noteId);
+      // Get new sorted order
       const allNotes = await NotesService.getAllNotes();
-      newNotes = allNotes.sort((a, b) => {
+      const sortedNotes = allNotes.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
         if (!a.is_favorite && b.is_favorite) return 1;
         const dateA = new Date(a.updated_at || a.created_at || '').getTime();
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
-      setNotes(newNotes);
-    } finally {
-      setLoading(false);
-    }
-    setTimeout(() => {
-      newNotes.forEach((note, idx) => {
-        if (typeof note.id === 'number') {
-          const prev = prevPositions.find(p => p.id === note.id);
-          if (prev && prev.idx !== idx && noteAnims[note.id]) {
-            noteAnims[note.id].translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
-            Animated.spring(noteAnims[note.id].translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-            }).start();
-          }
-        }
-      });
-      // Remove anim for deleted item
-      if (deletedId) {
-        setNoteAnims(prev => {
-          const copy = { ...prev };
-          delete copy[deletedId];
-          return copy;
-        });
-      }
-    }, 50);
-  };
-
-  const toggleFavorite = async (noteId: number) => {
-    try {
-      await NotesService.toggleFavorite(noteId);
-      await animateListChange();
+      await animateReorder(sortedNotes);
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
@@ -231,18 +217,33 @@ export default function NotesScreen() {
           style: 'destructive',
           onPress: async () => {
             // Fade out animation
-            Animated.timing(noteAnims[noteId]?.opacity || new Animated.Value(1), {
-              toValue: 0,
-              duration: 350,
-              useNativeDriver: true,
-            }).start(async () => {
-              try {
-                await NotesService.deleteNote(noteId);
-                await animateListChange(noteId);
-              } catch (error) {
-                Alert.alert('Error', 'Failed to delete note');
-              }
+            await new Promise(res => {
+              Animated.timing(noteAnims[noteId]?.opacity || new Animated.Value(1), {
+                toValue: 0,
+                duration: 350,
+                useNativeDriver: true,
+              }).start(() => res(null));
             });
+            try {
+              await NotesService.deleteNote(noteId);
+              // Remove from data and animate slide
+              const allNotes = await NotesService.getAllNotes();
+              const sortedNotes = allNotes.sort((a, b) => {
+                if (a.is_favorite && !b.is_favorite) return -1;
+                if (!a.is_favorite && b.is_favorite) return 1;
+                const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+                const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+                return dateB - dateA;
+              });
+              await animateReorder(sortedNotes);
+              setNoteAnims(prev => {
+                const copy = { ...prev };
+                delete copy[noteId];
+                return copy;
+              });
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete note');
+            }
           },
         },
       ]

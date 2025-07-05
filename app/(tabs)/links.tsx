@@ -18,6 +18,25 @@ import { Link, LinksService } from "../../database/linksService";
 const CARD_HEIGHT = 110; // Approximate height of a link card (adjust if needed)
 
 export default function LinksScreen() {
+  // Animate slide for all items to new positions, then update data
+  const animateReorder = async (newOrder: Link[]) => {
+    const prevPositions = links.map((l, idx) => ({ id: l.id, idx }));
+    newOrder.forEach((link, idx) => {
+      if (typeof link.id === 'number') {
+        const prev = prevPositions.find(p => p.id === link.id);
+        if (prev && prev.idx !== idx && linkAnims[link.id]) {
+          linkAnims[link.id].translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
+          Animated.spring(linkAnims[link.id].translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      }
+    });
+    // Wait for animation to finish before updating data
+    await new Promise(res => setTimeout(res, 350));
+    setLinks(newOrder);
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,7 +184,16 @@ export default function LinksScreen() {
   async function toggleFavorite(linkId: number) {
     try {
       await LinksService.toggleFavorite(linkId);
-      await animateListChange();
+      // Get new sorted order
+      const allLinks = await LinksService.getAllLinks();
+      const sortedLinks = allLinks.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      await animateReorder(sortedLinks);
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
@@ -232,18 +260,33 @@ export default function LinksScreen() {
           style: 'destructive',
           onPress: async () => {
             // Fade out animation
-            Animated.timing(linkAnims[linkId]?.opacity || new Animated.Value(1), {
-              toValue: 0,
-              duration: 350,
-              useNativeDriver: true,
-            }).start(async () => {
-              try {
-                await LinksService.deleteLink(linkId);
-                await animateListChange(linkId);
-              } catch (error) {
-                Alert.alert('Error', 'Failed to delete link');
-              }
+            await new Promise(res => {
+              Animated.timing(linkAnims[linkId]?.opacity || new Animated.Value(1), {
+                toValue: 0,
+                duration: 350,
+                useNativeDriver: true,
+              }).start(() => res(null));
             });
+            try {
+              await LinksService.deleteLink(linkId);
+              // Remove from data and animate slide
+              const allLinks = await LinksService.getAllLinks();
+              const sortedLinks = allLinks.sort((a, b) => {
+                if (a.is_favorite && !b.is_favorite) return -1;
+                if (!a.is_favorite && b.is_favorite) return 1;
+                const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+                const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+                return dateB - dateA;
+              });
+              await animateReorder(sortedLinks);
+              setLinkAnims(prev => {
+                const copy = { ...prev };
+                delete copy[linkId];
+                return copy;
+              });
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete link');
+            }
           },
         },
       ]
