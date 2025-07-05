@@ -3,7 +3,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useRouter } from "expo-router";
 import { TouchableOpacity } from "react-native";
-import AddScreen from './add';
 import HomeScreen from './home';
 import LinksScreen from './links';
 import NotesScreen from './notes';
@@ -110,16 +109,6 @@ export default function TabLayout() {
             tabBarLabel: 'Photos',
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name="images" size={26} color={focused ? "#fab148" : color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="add"
-          component={AddScreen}
-          options={{
-            tabBarLabel: 'Add',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name="add-circle" size={26} color={focused ? "#FF6B6B" : color} />
             ),
           }}
         />

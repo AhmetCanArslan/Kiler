@@ -222,6 +222,33 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     }
   };
 
+  // Pick image from gallery
+  const handlePickFromGallery = async () => {
+    try {
+      // Request media library permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Gallery permission is needed to select photos.');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        await savePhoto(asset);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
   // Save photo to database
   const savePhoto = async (asset: ImagePicker.ImagePickerAsset) => {
     // Skip database operations on web platform
@@ -231,13 +258,21 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     }
 
     try {
-      // Generate a title from the filename or use a default
+      // Generate a title with date-time-seconds format
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      
+      const title = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
       const filename = asset.uri.split('/').pop() || 'untitled.jpg';
-      const title = filename.replace(/\.[^/.]+$/, ""); // Remove extension
 
       await PhotosService.createPhoto({
         title: title,
-        description: `Photo taken on ${new Date().toLocaleDateString()}`,
+        description: `Photo taken on ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`,
         file_path: asset.uri,
         original_name: filename,
         file_size: asset.fileSize,
@@ -245,7 +280,7 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
         height: asset.height,
         mime_type: asset.mimeType,
         tags: ['photo', 'captured'],
-        taken_at: new Date().toISOString(),
+        taken_at: now.toISOString(),
       });
 
       // Refresh data immediately
@@ -304,6 +339,26 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     setLinkTitle("");
     setLinkUrl("");
     setLinkDescription("");
+  };
+
+  // Handle import content
+  const handleImportContent = () => {
+    Alert.alert("Import Content", "This feature will be available soon!");
+  };
+
+  // Handle clipboard
+  const handleClipboard = () => {
+    Alert.alert("Clipboard", "This feature will be available soon!");
+  };
+
+  // Handle voice note
+  const handleVoiceNote = () => {
+    Alert.alert("Voice Note", "This feature will be available soon!");
+  };
+
+  // Handle scan text
+  const handleScanText = () => {
+    Alert.alert("Scan Text", "This feature will be available soon!");
   };
 
   return (
@@ -393,9 +448,28 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
               <Ionicons name="link" size={24} color="#fff" />
               <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Add Link</Text>
               </TouchableOpacity>
-              <TouchableOpacity key="search" style={[styles.actionCard, { width: "22%", backgroundColor: "#2D3748", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]}>
-              <Ionicons name="search" size={24} color="#fff" />
-              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Search</Text>
+              <TouchableOpacity key="gallery" style={[styles.actionCard, { width: "22%", backgroundColor: "#D53F8C", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]} onPress={handlePickFromGallery}>
+              <Ionicons name="library" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>From Gallery</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.extraActionsGrid}>
+              <TouchableOpacity key="clipboard" style={[styles.actionCard, { width: "22%", backgroundColor: "#8B5CF6", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]} onPress={handleClipboard}>
+              <Ionicons name="copy" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Clipboard</Text>
+              </TouchableOpacity>
+              <TouchableOpacity key="voice" style={[styles.actionCard, { width: "22%", backgroundColor: "#10B981", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]} onPress={handleVoiceNote}>
+              <Ionicons name="mic" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Voice Note</Text>
+              </TouchableOpacity>
+              <TouchableOpacity key="scan" style={[styles.actionCard, { width: "22%", backgroundColor: "#F59E0B", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]} onPress={handleScanText}>
+              <Ionicons name="scan" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Scan Text</Text>
+              </TouchableOpacity>
+              <TouchableOpacity key="import" style={[styles.actionCard, { width: "22%", backgroundColor: "#6366F1", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]} onPress={handleImportContent}>
+              <Ionicons name="share" size={24} color="#fff" />
+              <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Import</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -600,6 +674,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+  },
+  extraActionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 10,
   },
   actionCard: {
     backgroundColor: "#1A202C",
