@@ -24,6 +24,10 @@ export default function NotesScreen() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editNoteTitle, setEditNoteTitle] = useState("");
+  const [editNoteContent, setEditNoteContent] = useState("");
   const [noteAnims, setNoteAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
 
   const getNoteAnim = useCallback((id: number) => {
@@ -292,6 +296,53 @@ export default function NotesScreen() {
     setNoteContent("");
   };
 
+  const handleEditNote = (note: Note) => {
+    setEditingNote(note);
+    setEditNoteTitle(note.title);
+    setEditNoteContent(note.content);
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingNote(null);
+    setEditNoteTitle("");
+    setEditNoteContent("");
+  };
+
+  const handleSaveEditedNote = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Database operations are not supported on web platform");
+      return;
+    }
+    if (!editNoteTitle.trim() || !editNoteContent.trim()) {
+      Alert.alert("Error", "Please fill in both title and content");
+      return;
+    }
+    if (!editingNote?.id) {
+      Alert.alert("Error", "No note selected for editing");
+      return;
+    }
+
+    try {
+      const success = await NotesService.updateNote(editingNote.id, {
+        title: editNoteTitle.trim(),
+        content: editNoteContent.trim(),
+      });
+
+      if (success) {
+        handleCloseEditModal();
+        // Refresh the notes list
+        loadNotes(false);
+      } else {
+        Alert.alert("Error", "Failed to update note. Please try again.");
+      }
+    } catch (error) {
+      console.error('Error updating note:', error);
+      Alert.alert("Error", "Failed to update note. Please try again.");
+    }
+  }, [editNoteTitle, editNoteContent, editingNote, loadNotes]);
+
   const handleDeleteNote = useCallback((noteId: number) => {
     Alert.alert(
       'Delete Note',
@@ -386,6 +437,9 @@ export default function NotesScreen() {
                 color={item.is_favorite ? "#FF6B6B" : "#8E9BA2"}
               />
             </TouchableOpacity>
+            <TouchableOpacity style={styles.editButton} onPress={() => handleEditNote(item)}>
+              <Ionicons name="create-outline" size={20} color="#68D391" />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteNote(item.id!)}>
               <Ionicons name="trash" size={20} color="#FF6B6B" />
             </TouchableOpacity>
@@ -402,7 +456,7 @@ export default function NotesScreen() {
         </View>
       </Animated.View>
     );
-  }, [noteAnims, toggleFavorite, handleDeleteNote]);
+  }, [noteAnims, toggleFavorite, handleEditNote, handleDeleteNote]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -491,6 +545,44 @@ export default function NotesScreen() {
           </TouchableOpacity>
         </View>
       </CommonModal>
+
+      <CommonModal visible={showEditModal} onClose={handleCloseEditModal}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Edit Note</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={handleCloseEditModal}>
+            <Ionicons name="close" size={24} color="#8E9BA2" />
+          </TouchableOpacity>
+        </View>
+
+        <TextInput
+          style={styles.titleInput}
+          placeholder="Note title..."
+          placeholderTextColor="#8E9BA2"
+          value={editNoteTitle}
+          onChangeText={setEditNoteTitle}
+          autoFocus={true}
+        />
+
+        <TextInput
+          style={styles.contentInput}
+          placeholder="Write your thoughts, poetry, or ideas..."
+          placeholderTextColor="#8E9BA2"
+          value={editNoteContent}
+          onChangeText={setEditNoteContent}
+          multiline
+          numberOfLines={10}
+          textAlignVertical="top"
+        />
+
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={[styles.cancelButton, { flex: 0.4 }]} onPress={handleCloseEditModal}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveEditedNote}>
+            <Text style={styles.saveButtonText}>Update Note</Text>
+          </TouchableOpacity>
+        </View>
+      </CommonModal>
     </SafeAreaView>
   );
 }
@@ -576,6 +668,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   favoriteButton: {
+    padding: 8,
+  },
+  editButton: {
     padding: 8,
   },
   deleteButton: {
