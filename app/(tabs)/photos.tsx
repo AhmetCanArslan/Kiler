@@ -12,12 +12,15 @@ import {
   Image,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
+
+import ZoomableImage from "../../components/ZoomableImage";
 
 import { Photo, PhotosService } from "../../database/photosService";
 
@@ -559,16 +562,20 @@ function PhotosScreen() {
             >
               <Ionicons name="close-circle" size={40} color="#fff" />
             </TouchableOpacity>
-            <Image
-              source={{ uri: previewPhoto.file_path }}
-              style={{
-                width: '90%',
-                height: '70%',
-                borderRadius: 18,
-                resizeMode: 'contain',
-                backgroundColor: '#222',
-              }}
-            />
+            <ScrollView
+              style={{ width: '100%' }}
+              contentContainerStyle={{ alignItems: 'center', justifyContent: 'center' }}
+              horizontal={false}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+              scrollEnabled={true}
+              // disables horizontal scroll to prevent tab switching
+              // disables horizontal scroll to prevent accidental tab switch
+            >
+              <View style={{ width: '100%', height: Dimensions.get('window').height * 0.7, alignItems: 'center', justifyContent: 'center' }}>
+                <ZoomableImage uri={previewPhoto.file_path} style={{ width: '90%', height: '100%' }} />
+              </View>
+            </ScrollView>
             <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 18 }} numberOfLines={2}>{previewPhoto.title}</Text>
             {stripPhotoTakenOn(previewPhoto.description) !== 'No description' && (
               <Text style={{ color: '#ccc', fontSize: 14, marginTop: 6, marginBottom: 10, textAlign: 'center', maxWidth: '90%' }} numberOfLines={3}>

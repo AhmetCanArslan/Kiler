@@ -21,7 +21,7 @@ export default function TabLayout() {
         initialRouteName="home"
         tabBarPosition="bottom"
         screenOptions={({ route }) => ({
-          swipeEnabled: true,
+          swipeEnabled: route.name !== "photos", // Disable swipe when in photos tab
           tabBarActiveTintColor:
             route.name === "notes"
               ? "#2ee28f"
