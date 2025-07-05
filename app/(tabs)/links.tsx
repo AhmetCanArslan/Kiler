@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -26,6 +27,11 @@ export default function LinksScreen() {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
   const [linkAnims, setLinkAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
+  const [editingLink, setEditingLink] = useState<Link | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editLinkTitle, setEditLinkTitle] = useState("");
+  const [editLinkUrl, setEditLinkUrl] = useState("");
+  const [editLinkDescription, setEditLinkDescription] = useState("");
 
   const getLinkAnim = useCallback((id: number) => {
     if (!linkAnims[id]) {
@@ -297,6 +303,67 @@ export default function LinksScreen() {
     setLinkDescription("");
   };
 
+  const handleEditLink = (link: Link) => {
+    setEditingLink(link);
+    setEditLinkTitle(link.title);
+    setEditLinkUrl(link.url);
+    setEditLinkDescription(link.description || "");
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingLink(null);
+    setEditLinkTitle("");
+    setEditLinkUrl("");
+    setEditLinkDescription("");
+  };
+
+  const handleSaveEditedLink = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Database operations are not supported on web platform");
+      return;
+    }
+    if (!editLinkTitle.trim() || !editLinkUrl.trim()) {
+      Alert.alert("Error", "Please fill in both title and URL");
+      return;
+    }
+    if (!editingLink?.id) {
+      Alert.alert("Error", "No link selected for editing");
+      return;
+    }
+
+    try {
+      const success = await LinksService.updateLink(editingLink.id, {
+        title: editLinkTitle.trim(),
+        url: editLinkUrl.trim(),
+        description: editLinkDescription.trim() || undefined,
+      });
+
+      if (success) {
+        handleCloseEditModal();
+        // Refresh the links list
+        loadLinks(false);
+      } else {
+        Alert.alert("Error", "Failed to update link. Please try again.");
+      }
+    } catch (error) {
+      console.error('Error updating link:', error);
+      Alert.alert("Error", "Failed to update link. Please try again.");
+    }
+  }, [editLinkTitle, editLinkUrl, editLinkDescription, editingLink, loadLinks]);
+
+  const handleCopyLink = useCallback(async (link: Link) => {
+    try {
+      await Clipboard.setStringAsync(link.url);
+      // Show a simple toast-like alert that dismisses automatically
+      Alert.alert("Copied to clipboard", "", [{ text: "OK" }], { cancelable: true });
+    } catch (error) {
+      console.error('Error copying link:', error);
+      Alert.alert("Error", "Failed to copy link URL");
+    }
+  }, []);
+
   const handleDeleteLink = useCallback((linkId: number) => {
     Alert.alert(
       'Delete Link',
@@ -391,6 +458,12 @@ export default function LinksScreen() {
                 color={item.is_favorite ? "#FF6B6B" : "#8E9BA2"}
               />
             </TouchableOpacity>
+            <TouchableOpacity style={styles.copyButton} onPress={() => handleCopyLink(item)}>
+              <Ionicons name="copy-outline" size={20} color="#4FACFE" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.editButton} onPress={() => handleEditLink(item)}>
+              <Ionicons name="create-outline" size={20} color="#68D391" />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteLink(item.id!)}>
               <Ionicons name="trash" size={20} color="#FF6B6B" />
             </TouchableOpacity>
@@ -407,7 +480,7 @@ export default function LinksScreen() {
         </View>
       </Animated.View>
     );
-  }, [linkAnims, toggleFavorite, handleDeleteLink]);
+  }, [linkAnims, toggleFavorite, handleEditLink, handleDeleteLink, handleCopyLink]);
 
 
   return (
@@ -500,6 +573,54 @@ export default function LinksScreen() {
           </TouchableOpacity>
         </View>
       </CommonModal>
+
+      <CommonModal visible={showEditModal} onClose={handleCloseEditModal}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Edit Link</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={handleCloseEditModal}>
+            <Ionicons name="close" size={24} color="#8E9BA2" />
+          </TouchableOpacity>
+        </View>
+
+        <TextInput
+          style={styles.titleInput}
+          placeholder="Link title..."
+          placeholderTextColor="#8E9BA2"
+          value={editLinkTitle}
+          onChangeText={setEditLinkTitle}
+          autoFocus={true}
+        />
+
+        <TextInput
+          style={styles.titleInput}
+          placeholder="URL..."
+          placeholderTextColor="#8E9BA2"
+          value={editLinkUrl}
+          onChangeText={setEditLinkUrl}
+          autoCapitalize="none"
+          keyboardType="url"
+        />
+
+        <TextInput
+          style={styles.contentInput}
+          placeholder="Description (optional)..."
+          placeholderTextColor="#8E9BA2"
+          value={editLinkDescription}
+          onChangeText={setEditLinkDescription}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={[styles.cancelButton, { flex: 0.4 }]} onPress={handleCloseEditModal}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveEditedLink}>
+            <Text style={styles.saveButtonText}>Update Link</Text>
+          </TouchableOpacity>
+        </View>
+      </CommonModal>
     </SafeAreaView>
   );
 }
@@ -584,6 +705,12 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   favoriteButton: {
+    padding: 8,
+  },
+  copyButton: {
+    padding: 8,
+  },
+  editButton: {
     padding: 8,
   },
   deleteButton: {
