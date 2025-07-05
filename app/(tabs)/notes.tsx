@@ -7,6 +7,7 @@ import {
   Animated,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +31,8 @@ export default function NotesScreen() {
   const [editNoteTitle, setEditNoteTitle] = useState("");
   const [editNoteContent, setEditNoteContent] = useState("");
   const [noteAnims, setNoteAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewNote, setPreviewNote] = useState<Note | null>(null);
 
   const getNoteAnim = useCallback((id: number) => {
     if (!noteAnims[id]) {
@@ -299,9 +302,13 @@ export default function NotesScreen() {
 
   const handleEditNote = (note: Note) => {
     setEditingNote(note);
-    setEditNoteTitle(note.title);
     setEditNoteContent(note.content);
     setShowEditModal(true);
+  };
+
+  const handlePreviewNote = (note: Note) => {
+    setPreviewNote(note);
+    setShowPreviewModal(true);
   };
 
   const handleCloseEditModal = () => {
@@ -431,7 +438,7 @@ export default function NotesScreen() {
           overflow: 'hidden',
         }}
       >
-        <View style={styles.noteCard}>
+        <TouchableOpacity style={styles.noteCard} onPress={() => handlePreviewNote(item)}>
           <View style={styles.noteHeader}>
             <View style={styles.noteIcon}>
               <Ionicons name="reader-outline" size={20} color="#fff" />
@@ -442,20 +449,20 @@ export default function NotesScreen() {
                 {item.content.split(' ').length} words · {item.content.length} chars
               </Text>
             </View>
-            <TouchableOpacity style={styles.favoriteButton} onPress={() => toggleFavorite(item.id!)}>
+            <TouchableOpacity style={styles.favoriteButton} onPress={(e) => { e.stopPropagation(); toggleFavorite(item.id!); }}>
               <Ionicons
                 name={item.is_favorite ? "heart" : "heart-outline"}
                 size={22}
                 color={item.is_favorite ? "#FF6B6B" : "#8E9BA2"}
               />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.copyButton} onPress={() => handleCopyNote(item)}>
+            <TouchableOpacity style={styles.copyButton} onPress={(e) => { e.stopPropagation(); handleCopyNote(item); }}>
               <Ionicons name="copy-outline" size={20} color="#4FACFE" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.editButton} onPress={() => handleEditNote(item)}>
+            <TouchableOpacity style={styles.editButton} onPress={(e) => { e.stopPropagation(); handleEditNote(item); }}>
               <Ionicons name="create-outline" size={20} color="#68D391" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteNote(item.id!)}>
+            <TouchableOpacity style={styles.deleteButton} onPress={(e) => { e.stopPropagation(); handleDeleteNote(item.id!); }}>
               <Ionicons name="trash" size={20} color="#FF6B6B" />
             </TouchableOpacity>
           </View>
@@ -468,7 +475,7 @@ export default function NotesScreen() {
             </View>
             <Text style={styles.noteCreatedAt}>{formatDate(item.updated_at || item.created_at || "")}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
       </Animated.View>
     );
   }, [noteAnims, toggleFavorite, handleCopyNote, handleEditNote, handleDeleteNote]);
@@ -596,6 +603,32 @@ export default function NotesScreen() {
           <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveEditedNote}>
             <Text style={styles.saveButtonText}>Update Note</Text>
           </TouchableOpacity>
+        </View>
+      </CommonModal>
+
+      <CommonModal visible={showPreviewModal} onClose={() => setShowPreviewModal(false)}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>{previewNote?.title}</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={() => setShowPreviewModal(false)}>
+            <Ionicons name="close" size={24} color="#8E9BA2" />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.previewContent} showsVerticalScrollIndicator={false}>
+          <Text style={styles.previewText} selectable={true}>
+            {previewNote?.content}
+          </Text>
+        </ScrollView>
+
+        <View style={styles.previewFooter}>
+          <Text style={styles.previewDate}>
+            Created: {previewNote?.created_at ? formatDate(previewNote.created_at) : ''}
+          </Text>
+          {previewNote?.updated_at && previewNote.updated_at !== previewNote.created_at && (
+            <Text style={styles.previewDate}>
+              Updated: {formatDate(previewNote.updated_at)}
+            </Text>
+          )}
         </View>
       </CommonModal>
     </SafeAreaView>
@@ -822,5 +855,33 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  previewContent: {
+    flex: 1,
+    backgroundColor: "transparent",
+    paddingHorizontal: 0,
+    paddingVertical: 10,
+  },
+  previewText: {
+    color: "#E8E8E8",
+    fontSize: 16,
+    lineHeight: 24,
+    padding: 15,
+    backgroundColor: "#1C2329",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2A3441",
+  },
+  previewFooter: {
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#2A3441",
+    marginTop: 10,
+  },
+  previewDate: {
+    color: "#8E9BA2",
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 5,
   },
 });
