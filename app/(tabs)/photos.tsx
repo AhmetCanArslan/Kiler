@@ -1,16 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
   Dimensions,
+  FlatList,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 import { Photo, PhotosService } from "../../database/photosService";
@@ -24,27 +24,22 @@ function PhotosScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
-  // Animation state for each photo
   const [photoAnims, setPhotoAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
   const containerRef = useRef<View>(null);
-  // Fade animations removed
-  // const listAnim = useRef(new Animated.Value(0)).current;
-  // const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Load photos when search query changes
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      searchPhotos();
-    } else {
-      loadPhotos();
+  const getPhotoAnim = useCallback((id: number) => {
+    if (!photoAnims[id]) {
+      const newAnim = {
+        opacity: new Animated.Value(1),
+        translateY: new Animated.Value(0),
+      };
+      setPhotoAnims(prev => ({ ...prev, [id]: newAnim }));
+      return newAnim;
     }
-  }, [searchQuery]);
+    return photoAnims[id];
+  }, [photoAnims]);
 
-  // Fade in animation only on focus (tab switch)
-  // Fade animation on focus removed
-
-
-  const loadPhotos = async (withAnim = false, newId?: number) => {
+  const loadPhotos = useCallback(async () => {
     try {
       setLoading(true);
       const allPhotos = await PhotosService.getAllPhotos();
@@ -55,64 +50,30 @@ function PhotosScreen() {
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
-      // Animasyon state'lerini güncelle
+
       setPhotoAnims(prev => {
-        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = { ...prev };
-        sortedPhotos.forEach((photo) => {
-          if (typeof photo.id === 'number' && !newAnims[photo.id]) {
-            newAnims[photo.id] = {
-              opacity: new Animated.Value(newId === photo.id ? 0 : 1),
+        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = {};
+        sortedPhotos.forEach(photo => {
+          if (photo.id) {
+            newAnims[photo.id] = prev[photo.id] || {
+              opacity: new Animated.Value(1),
               translateY: new Animated.Value(0),
             };
           }
         });
-        // Remove anims for deleted photos
-        Object.keys(newAnims).forEach(id => {
-          if (!sortedPhotos.find(p => p.id === Number(id))) {
-            delete newAnims[Number(id)];
-          }
-        });
         return newAnims;
       });
-      // If a new photo was added, fade it in (fade in at new position, slide others)
-      if (withAnim && newId) {
-        // 1. Find where the new photo will be inserted
-        const prevPositions = photos.map((p, idx) => ({ id: p.id, idx }));
-        sortedPhotos.forEach((photo, idx) => {
-          if (photo.id !== newId && typeof photo.id === 'number') {
-            const prev = prevPositions.find(p => p.id === photo.id);
-            if (prev && prev.idx !== idx && photoAnims[photo.id]) {
-              photoAnims[photo.id].translateY.setValue((prev.idx - idx) * (imageSize + 20));
-              Animated.spring(photoAnims[photo.id].translateY, {
-                toValue: 0,
-                useNativeDriver: true,
-              }).start();
-            }
-          }
-        });
-        setPhotos(sortedPhotos);
-        setTimeout(() => {
-          if (photoAnims[newId]) {
-            photoAnims[newId].opacity.setValue(0);
-            Animated.timing(photoAnims[newId].opacity, {
-              toValue: 1,
-              duration: 350,
-              useNativeDriver: true,
-            }).start();
-          }
-        }, 50);
-      } else {
-        setPhotos(sortedPhotos);
-      }
+
+      setPhotos(sortedPhotos);
     } catch (error) {
       console.error('Error loading photos:', error);
       Alert.alert('Error', 'Failed to load photos');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const searchPhotos = async () => {
+  const searchPhotos = useCallback(async () => {
     try {
       setLoading(true);
       const searchResults = await PhotosService.searchPhotos(searchQuery.trim());
@@ -123,7 +84,15 @@ function PhotosScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      searchPhotos();
+    } else {
+      loadPhotos();
+    }
+  }, [searchQuery, loadPhotos, searchPhotos]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -137,68 +106,51 @@ function PhotosScreen() {
     return date.toLocaleDateString();
   };
 
-  // Animate slide for all items to new positions, then update data
-  // Animate favorite: fade out at old position, slide others, fade in at new position
-  // Yeni favori animasyonu: fade out, üsttekiler slide down, sonra fade in
-  const animateFavoriteMove = async (oldIdx: number, newIdx: number, photoId: number, newOrder: Photo[]) => {
-    // 1. Fade out the photo at old position
-    await new Promise(res => {
-      Animated.timing(photoAnims[photoId]?.opacity || new Animated.Value(1), {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => res(null));
+  const animateFavoriteMove = useCallback(async (oldIdx: number, newIdx: number, photoId: number) => {
+    const anim = getPhotoAnim(photoId);
+
+    await new Promise(res => Animated.timing(anim.opacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => res(null)));
+
+    setPhotos(prevPhotos => {
+      const newPhotos = [...prevPhotos];
+      const [movedPhoto] = newPhotos.splice(oldIdx, 1);
+      newPhotos.splice(newIdx, 0, movedPhoto);
+      return newPhotos;
     });
 
-    // 2. Slide only the items above oldIdx (üstündekiler 1 satır aşağı)
-    const slidePromises = [];
-    for (let idx = 0; idx < oldIdx; idx++) {
-      const photo = photos[idx];
-      const id = photo?.id;
-      if (typeof id === 'number' && id !== photoId && photoAnims[id]) {
-        photoAnims[id].translateY.setValue(0);
-        slidePromises.push(new Promise(slideRes => {
-          Animated.timing(photoAnims[id].translateY, {
-            toValue: imageSize + 20,
-            duration: 350,
-            useNativeDriver: true,
-          }).start(() => slideRes(null));
-        }));
-      }
-    }
-    await Promise.all(slidePromises);
-
-    // 3. Update data: move photo to top (en üste getir) -- sadece animasyonlar bittikten sonra
-    const newPhotos = [...photos];
-    const moved = newPhotos.splice(oldIdx, 1)[0];
-    newPhotos.unshift(moved);
-    setPhotos(newPhotos);
-
-    // 4. Fade in the photo at new position (en üstte)
-    if (photoAnims[photoId]) {
-      photoAnims[photoId].opacity.setValue(0);
-      await new Promise(res => {
-        Animated.timing(photoAnims[photoId].opacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }).start(() => res(null));
-      });
-    }
-
-    // 5. Reset translateY for all (animasyon sonrası pozisyonu düzelt)
-    Object.keys(photoAnims).forEach(id => {
-      if (photoAnims[Number(id)]) {
-        photoAnims[Number(id)].translateY.setValue(0);
-      }
+    await new Promise(resolve => {
+      Animated.stagger(50,
+        photos
+          .filter(p => p.id !== photoId)
+          .map(p => {
+            const pAnim = getPhotoAnim(p.id as number);
+            pAnim.translateY.setValue(imageSize + 20); // Approximate height
+            return Animated.spring(pAnim.translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+            });
+          })
+      ).start(() => resolve(null));
     });
-  };
 
-  const toggleFavorite = async (photoId: number) => {
+    anim.translateY.setValue(0);
+    await new Promise(res => Animated.timing(anim.opacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => res(null)));
+
+  }, [getPhotoAnim, photos]);
+
+  const toggleFavorite = useCallback(async (photoId: number) => {
     try {
-      // Find old and new index for the photo
       const oldIdx = photos.findIndex(p => p.id === photoId);
       await PhotosService.toggleFavorite(photoId);
+
       const allPhotos = await PhotosService.getAllPhotos();
       const sortedPhotos = allPhotos.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -208,21 +160,18 @@ function PhotosScreen() {
         return dateB - dateA;
       });
       const newIdx = sortedPhotos.findIndex(p => p.id === photoId);
+
       if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
-        await animateFavoriteMove(oldIdx, newIdx, photoId, sortedPhotos);
-        // Favori animasyonu bittikten sonra state'i güncelle ki, buton güncel olsun
-        setPhotos(sortedPhotos);
-      } else {
-        setPhotos(sortedPhotos);
+        await animateFavoriteMove(oldIdx, newIdx, photoId);
       }
+      loadPhotos();
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
     }
-  };
+  }, [photos, animateFavoriteMove, loadPhotos]);
 
-  // Add delete handler
-  const handleDeletePhoto = (photoId: number) => {
+  const handleDeletePhoto = useCallback((photoId: number) => {
     Alert.alert(
       'Delete Photo',
       'Are you sure you want to delete this photo?',
@@ -232,64 +181,89 @@ function PhotosScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            // 1. Fade out the photo
-            await new Promise(res => {
-              Animated.timing(photoAnims[photoId]?.opacity || new Animated.Value(1), {
-                toValue: 0,
-                duration: 250,
-                useNativeDriver: true,
-              }).start(() => res(null));
-            });
+            const anim = getPhotoAnim(photoId);
+            await new Promise(res => Animated.timing(anim.opacity, {
+              toValue: 0,
+              duration: 250,
+              useNativeDriver: true,
+            }).start(() => res(null)));
+
             try {
               await PhotosService.deletePhoto(photoId);
-              // 2. Slide others to new positions (after fade out)
-              const allPhotos = await PhotosService.getAllPhotos();
-              const sortedPhotos = allPhotos.sort((a, b) => {
-                if (a.is_favorite && !b.is_favorite) return -1;
-                if (!a.is_favorite && b.is_favorite) return 1;
-                const dateA = new Date(a.updated_at || a.created_at || '').getTime();
-                const dateB = new Date(b.updated_at || b.created_at || '').getTime();
-                return dateB - dateA;
-              });
-              const filteredPhotos = sortedPhotos.filter(p => p.id !== photoId);
-              const prevPositions = photos.map((p, idx) => ({ id: p.id, idx }));
-              const slidePromises: Promise<unknown>[] = [];
-              filteredPhotos.forEach((photo, idx) => {
-                const id = photo?.id;
-                if (typeof id === 'number') {
-                  const prev = prevPositions.find(p => p.id === id);
-                  if (prev && prev.idx !== idx && photoAnims[id]) {
-                    photoAnims[id].translateY.setValue((prev.idx - idx) * (imageSize + 20));
-                    slidePromises.push(new Promise(slideRes => {
-                      Animated.timing(photoAnims[id].translateY, {
-                        toValue: 0,
-                        duration: 350,
-                        useNativeDriver: true,
-                      }).start(() => slideRes(null));
-                    }));
-                  }
-                }
-              });
-              await Promise.all(slidePromises);
-              // 3. Remove the photo from the list
-              setPhotos(filteredPhotos);
-              setTimeout(() => {
-                setPhotoAnims(prev => {
-                  const copy = { ...prev };
-                  delete copy[photoId];
-                  return copy;
-                });
-              }, 50);
+              await loadPhotos();
             } catch (error) {
               Alert.alert('Error', 'Failed to delete photo');
+              anim.opacity.setValue(1); // Restore on error
             }
           },
         },
       ]
     );
-  };
+  }, [getPhotoAnim, loadPhotos]);
 
-  // (No longer needed, replaced by animateReorder)
+  const memoizedRenderItem = useMemo(() => ({ item }: { item: Photo }) => {
+    const anim = photoAnims[item.id as number] || { opacity: 1, translateY: 0 };
+    return (
+      <Animated.View
+        style={{
+          opacity: anim.opacity,
+          transform: [{ translateY: anim.translateY }],
+          width: imageSize,
+          marginBottom: 15,
+        }}
+      >
+        <TouchableOpacity style={styles.photoCard}>
+          <View style={styles.photoPlaceholder}>
+            <Ionicons name="image" size={32} color="#8E9BA2" />
+          </View>
+          <View style={styles.photoInfo}>
+            <Text style={styles.photoTitle} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={styles.photoDescription} numberOfLines={2}>
+              {item.description || "No description"}
+            </Text>
+            <View style={styles.photoFooter}>
+              <View style={styles.tags}>
+                {(item.tags || []).slice(0, 2).map((tag, index) => (
+                  <Text key={index} style={styles.tag}>
+                    #{tag}
+                  </Text>
+                ))}
+              </View>
+              <Text style={styles.photoDate}>
+                {formatDate(
+                  item.taken_at ||
+                  item.updated_at ||
+                  item.created_at ||
+                  ""
+                )}
+              </Text>
+            </View>
+          </View>
+          <View style={{ position: 'absolute', top: 8, right: 8, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={styles.favoriteButton}
+              onPress={() => toggleFavorite(item.id!)}
+            >
+              <Ionicons
+                name={item.is_favorite ? "heart" : "heart-outline"}
+                size={16}
+                color={item.is_favorite ? "#FF6B6B" : "#8E9BA2"}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDeletePhoto(item.id!)}
+            >
+              <Ionicons name="trash" size={16} color="#FF6B6B" />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }, [photoAnims, toggleFavorite, handleDeletePhoto]);
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -310,88 +284,37 @@ function PhotosScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-            </View>
-          ) : photos.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="camera-outline" size={64} color="#4A5568" />
-              <Text style={styles.emptyTitle}>No Photos Found</Text>
-              <Text style={styles.emptyText}>
-                {searchQuery ? "Try a different search term" : "Start capturing your first photo"}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.photosGrid}>
-              {photos.map((photo) => (
-                <Animated.View
-                  key={photo.id}
-              style={{
-                opacity: typeof photo.id === 'number' && photoAnims[photo.id]?.opacity !== undefined ? photoAnims[photo.id].opacity : 1,
-                transform: [
-                  {
-                    translateY:
-                      typeof photo.id === 'number' && photoAnims[photo.id]?.translateY !== undefined
-                        ? photoAnims[photo.id].translateY
-                        : 0,
-                  },
-                ],
-              }}
-                >
-                  <TouchableOpacity style={styles.photoCard}>
-                    <View style={styles.photoPlaceholder}>
-                      <Ionicons name="image" size={32} color="#8E9BA2" />
-                    </View>
-                    <View style={styles.photoInfo}>
-                      <Text style={styles.photoTitle} numberOfLines={1}>
-                        {photo.title}
-                      </Text>
-                      <Text style={styles.photoDescription} numberOfLines={2}>
-                        {photo.description || "No description"}
-                      </Text>
-                      <View style={styles.photoFooter}>
-                        <View style={styles.tags}>
-                          {(photo.tags || []).slice(0, 2).map((tag, index) => (
-                            <Text key={index} style={styles.tag}>
-                              #{tag}
-                            </Text>
-                          ))}
-                        </View>
-                        <Text style={styles.photoDate}>
-                          {formatDate(
-                            photo.taken_at ||
-                              photo.updated_at ||
-                              photo.created_at ||
-                              ""
-                          )}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={{ position: 'absolute', top: 8, right: 8, alignItems: 'center' }}>
-                      <TouchableOpacity
-                        style={styles.favoriteButton}
-                        onPress={() => toggleFavorite(photo.id!)}
-                      >
-                        <Ionicons
-                          name={photo.is_favorite ? "heart" : "heart-outline"}
-                          size={16}
-                          color={photo.is_favorite ? "#FF6B6B" : "#8E9BA2"}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => handleDeletePhoto(photo.id!)}
-                      >
-                        <Ionicons name="trash" size={16} color="#FF6B6B" />
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-            </View>
-          )}
-        </ScrollView>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading Photos...</Text>
+          </View>
+        ) : photos.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="camera-outline" size={64} color="#4A5568" />
+            <Text style={styles.emptyTitle}>No Photos Found</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery ? "Try a different search term" : "Start capturing your first photo"}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={photos}
+            renderItem={memoizedRenderItem}
+            keyExtractor={(item) => item.id!.toString()}
+            numColumns={2}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            contentContainerStyle={styles.content}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="camera-outline" size={64} color="#4A5568" />
+                <Text style={styles.emptyTitle}>No Photos Found</Text>
+                <Text style={styles.emptyText}>
+                  {searchQuery ? "Try a different search term" : "Start capturing your first photo"}
+                </Text>
+              </View>
+            )}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -437,8 +360,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   content: {
-    flex: 1,
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   photosGrid: {
     flexDirection: "row",
@@ -449,8 +372,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1A202C",
     borderRadius: 16,
     padding: 12,
-    marginBottom: 15,
-    width: imageSize,
+    width: '100%',
     borderWidth: 1,
     borderColor: "#2D3748",
   },

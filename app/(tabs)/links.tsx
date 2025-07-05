@@ -1,11 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Animated,
   Platform,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -18,75 +17,6 @@ import { Link, LinksService } from "../../database/linksService";
 const CARD_HEIGHT = 110; // Approximate height of a link card (adjust if needed)
 
 export default function LinksScreen() {
-  // Helper: get or create anim object for a link id
-  const getLinkAnim = (id: number | undefined) => {
-    if (typeof id !== 'number') return { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
-    setLinkAnims(prev => {
-      if (typeof id === 'number' && !prev[id]) {
-        prev[id] = {
-          opacity: new Animated.Value(1),
-          translateY: new Animated.Value(0),
-        };
-      }
-      return { ...prev };
-    });
-    return (typeof id === 'number' && linkAnims[id]) ? linkAnims[id] : { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
-  };
-  // Animate favorite: fade out at old position, slide others, fade in at new position
-  // Yeni favori animasyonu: fade out, üsttekiler slide down, sonra fade in
-  const animateFavoriteMove = async (oldIdx: number, newIdx: number, linkId: number, newOrder: Link[]) => {
-    // 1. Fade out the link at old position
-    await new Promise(res => {
-      Animated.timing(linkAnims[linkId]?.opacity || new Animated.Value(1), {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => res(null));
-    });
-
-    // 2. Slide only the items above oldIdx (üstündekiler 1 satır aşağı)
-    const slidePromises: Promise<unknown>[] = [];
-    for (let idx = 0; idx < oldIdx; idx++) {
-      const link = links[idx];
-      if (link.id !== linkId && typeof link.id === 'number') {
-        const anim = getLinkAnim(link.id);
-        anim.translateY.setValue(0);
-        slidePromises.push(new Promise(slideRes => {
-          Animated.timing(anim.translateY, {
-            toValue: CARD_HEIGHT + 15,
-            duration: 350,
-            useNativeDriver: true,
-          }).start(() => slideRes(null));
-        }));
-      }
-    }
-    await Promise.all(slidePromises);
-
-    // 3. Update data: move link to top (en üste getir) -- sadece animasyonlar bittikten sonra
-    const newLinks = [...links];
-    const moved = newLinks.splice(oldIdx, 1)[0];
-    newLinks.unshift(moved);
-    setLinks(newLinks);
-
-    // 4. Fade in the link at new position (en üstte)
-    if (linkAnims[linkId]) {
-      linkAnims[linkId].opacity.setValue(0);
-      await new Promise(res => {
-        Animated.timing(linkAnims[linkId].opacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }).start(() => res(null));
-      });
-    }
-
-    // 5. Reset translateY for all (animasyon sonrası pozisyonu düzelt)
-    Object.keys(linkAnims).forEach(id => {
-      if (linkAnims[Number(id)]) {
-        linkAnims[Number(id)].translateY.setValue(0);
-      }
-    });
-  };
   const [searchQuery, setSearchQuery] = useState("");
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,88 +24,19 @@ export default function LinksScreen() {
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
-  // Animation state for each link
   const [linkAnims, setLinkAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
-  // Fade animations removed
-  // const listAnim = useRef(new Animated.Value(0)).current;
-  // const fadeAnim = useRef(new Animated.Value(0)).current;
-  // const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
-  // Load links when search query changes
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      searchLinks();
-    } else {
-      loadLinks();
+  const getLinkAnim = useCallback((id: number) => {
+    if (!linkAnims[id]) {
+      const newAnim = {
+        opacity: new Animated.Value(1),
+        translateY: new Animated.Value(0),
+      };
+      setLinkAnims(prev => ({ ...prev, [id]: newAnim }));
+      return newAnim;
     }
-  }, [searchQuery]);
-
-  // Fade in animation only on focus (tab switch)
-  // Fade animation on focus removed
-
-  async function loadLinks(withAnim = false, newId?: number) {
-    try {
-      setLoading(true);
-      const allLinks = await LinksService.getAllLinks();
-      const sortedLinks = allLinks.sort((a, b) => {
-        if (a.is_favorite && !b.is_favorite) return -1;
-        if (!a.is_favorite && b.is_favorite) return 1;
-        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
-        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
-        return dateB - dateA;
-      });
-      // Update animation state for each link
-      setLinkAnims(prev => {
-        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = { ...prev };
-        sortedLinks.forEach((link) => {
-          if (typeof link.id === 'number' && !newAnims[link.id]) {
-            newAnims[link.id] = {
-              opacity: new Animated.Value(newId === link.id ? 0 : 1),
-              translateY: new Animated.Value(0),
-            };
-          }
-        });
-        // Remove anims for deleted links
-        Object.keys(newAnims).forEach(id => {
-          if (!sortedLinks.find(l => l.id === Number(id))) {
-            delete newAnims[Number(id)];
-          }
-        });
-        return newAnims;
-      });
-      setLinks(sortedLinks);
-      // If a new link was added, fade it in
-      if (withAnim && newId) {
-        setTimeout(() => {
-          if (linkAnims[newId]) {
-            Animated.timing(linkAnims[newId].opacity, {
-              toValue: 1,
-              duration: 350,
-              useNativeDriver: true,
-            }).start();
-          }
-        }, 50);
-      }
-    } catch (error) {
-      console.error('Error loading links:', error);
-      Alert.alert('Error', 'Failed to load links');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function searchLinks() {
-    try {
-      setLoading(true);
-      const searchResults = await LinksService.searchLinks(searchQuery.trim());
-      setLinks(searchResults);
-    } catch (error) {
-      console.error('Error searching links:', error);
-      Alert.alert('Error', 'Failed to search links');
-    } finally {
-      setLoading(false);
-    }
-  }
+    return linkAnims[id];
+  }, [linkAnims]);
 
   function formatDate(dateString: string) {
     const date = new Date(dateString);
@@ -188,54 +49,113 @@ export default function LinksScreen() {
     return date.toLocaleDateString();
   }
 
-  const animateListChange = async (deletedId?: number) => {
-    // Save previous positions
-    const prevPositions = links.map((l, idx) => ({ id: l.id, idx }));
-    // Load new links and update state
-    let newLinks: Link[] = [];
+  const animateFavoriteMove = useCallback(async (oldIdx: number, newIdx: number, linkId: number) => {
+    const anim = getLinkAnim(linkId);
+
+    // 1. Fade out
+    await new Promise(res => Animated.timing(anim.opacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => res(null)));
+
+    // 2. Update state to get new positions, but keep item invisible
+    setLinks(prevLinks => {
+      const newLinks = [...prevLinks];
+      const [movedLink] = newLinks.splice(oldIdx, 1);
+      newLinks.splice(newIdx, 0, movedLink);
+      return newLinks;
+    });
+
+    // 3. Animate other items sliding
+    await new Promise(resolve => {
+      Animated.stagger(50,
+        links
+          .filter(l => l.id !== linkId)
+          .map(l => {
+            const lAnim = getLinkAnim(l.id as number);
+            lAnim.translateY.setValue(CARD_HEIGHT); // Move down initially
+            return Animated.spring(lAnim.translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+            });
+          })
+      ).start(() => resolve(null));
+    });
+
+
+    // 4. Fade in at new position
+    anim.translateY.setValue(0); // Reset position before fade in
+    await new Promise(res => Animated.timing(anim.opacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => res(null)));
+
+  }, [getLinkAnim, links]);
+
+  const loadLinks = useCallback(async () => {
     try {
       setLoading(true);
       const allLinks = await LinksService.getAllLinks();
-      newLinks = allLinks.sort((a, b) => {
+      const sortedLinks = allLinks.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
         if (!a.is_favorite && b.is_favorite) return 1;
         const dateA = new Date(a.updated_at || a.created_at || '').getTime();
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
-      setLinks(newLinks);
+
+      setLinkAnims(prev => {
+        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = {};
+        sortedLinks.forEach(link => {
+          if (link.id) {
+            newAnims[link.id] = prev[link.id] || {
+              opacity: new Animated.Value(1),
+              translateY: new Animated.Value(0),
+            };
+          }
+        });
+        return newAnims;
+      });
+
+      setLinks(sortedLinks);
+    } catch (error) {
+      console.error('Error loading links:', error);
+      Alert.alert('Error', 'Failed to load links');
     } finally {
       setLoading(false);
     }
-    setTimeout(() => {
-      newLinks.forEach((link, idx) => {
-        if (typeof link.id === 'number') {
-          const prev = prevPositions.find(p => p.id === link.id);
-          if (prev && prev.idx !== idx && linkAnims[link.id]) {
-            linkAnims[link.id].translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
-            Animated.spring(linkAnims[link.id].translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-            }).start();
-          }
-        }
-      });
-      // Remove anim for deleted item
-      if (deletedId) {
-        setLinkAnims(prev => {
-          const copy = { ...prev };
-          delete copy[deletedId];
-          return copy;
-        });
-      }
-    }, 50);
-  };
+  }, []);
 
-  async function toggleFavorite(linkId: number) {
+  const searchLinks = useCallback(async () => {
     try {
-      // Find old and new index for the link
+      setLoading(true);
+      const searchResults = await LinksService.searchLinks(searchQuery.trim());
+      setLinks(searchResults);
+    } catch (error) {
+      console.error('Error searching links:', error);
+      Alert.alert('Error', 'Failed to search links');
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery]);
+
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      searchLinks();
+    } else {
+      loadLinks();
+    }
+  }, [searchQuery, loadLinks, searchLinks]);
+
+
+  const toggleFavorite = useCallback(async (linkId: number) => {
+    try {
       const oldIdx = links.findIndex(l => l.id === linkId);
       await LinksService.toggleFavorite(linkId);
+
       const allLinks = await LinksService.getAllLinks();
       const sortedLinks = allLinks.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -245,25 +165,22 @@ export default function LinksScreen() {
         return dateB - dateA;
       });
       const newIdx = sortedLinks.findIndex(l => l.id === linkId);
+
       if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
-        await animateFavoriteMove(oldIdx, newIdx, linkId, sortedLinks);
-        // Favori animasyonu bittikten sonra state'i güncelle ki, buton güncel olsun
-        setLinks(sortedLinks);
-      } else {
-        setLinks(sortedLinks);
+        await animateFavoriteMove(oldIdx, newIdx, linkId);
       }
+      loadLinks();
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
     }
-  }
+  }, [links, animateFavoriteMove, loadLinks]);
 
-  // Sequential add animation: slide others, then fade in new link
   const handleAddLink = () => {
     setShowLinkModal(true);
   };
 
-  const handleSaveLink = async () => {
+  const handleSaveLink = useCallback(async () => {
     if (Platform.OS === 'web') {
       Alert.alert("Not supported", "Database operations are not supported on web platform");
       return;
@@ -278,55 +195,28 @@ export default function LinksScreen() {
         url: linkUrl.trim(),
         description: linkDescription.trim() || undefined,
       });
-      // Get new sorted links
-      const allLinks = await LinksService.getAllLinks();
-      const sortedLinks = allLinks.sort((a, b) => {
-        if (a.is_favorite && !b.is_favorite) return -1;
-        if (!a.is_favorite && b.is_favorite) return 1;
-        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
-        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
-        return dateB - dateA;
-      });
-      // 1. Slide others to new positions (before adding new link)
-      const prevPositions = links.map((l, idx) => ({ id: l.id, idx }));
-      await Promise.all(sortedLinks.map((link, idx) => {
-        if (link.id !== newLinkId && typeof link.id === 'number') {
-          const prev = prevPositions.find(p => p.id === link.id);
-          const anim = getLinkAnim(link.id);
-          if (prev && prev.idx !== idx) {
-            anim.translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
-            return new Promise(res => {
-              Animated.spring(anim.translateY, {
-                toValue: 0,
-                useNativeDriver: true,
-              }).start(() => res(null));
-            });
-          }
-        }
-        return Promise.resolve();
-      }));
-      setLinks(sortedLinks);
-      setShowLinkModal(false);
-      setLinkTitle("");
-      setLinkUrl("");
-      setLinkDescription("");
-      // 2. Fade in the new link
+
+      handleCloseModal();
+      await loadLinks();
+
       setTimeout(() => {
-        if (linkAnims[newLinkId]) {
-          linkAnims[newLinkId].opacity.setValue(0);
-          Animated.timing(linkAnims[newLinkId].opacity, {
+        const anim = getLinkAnim(newLinkId);
+        if (anim) {
+          anim.opacity.setValue(0);
+          Animated.timing(anim.opacity, {
             toValue: 1,
             duration: 350,
             useNativeDriver: true,
           }).start();
         }
-      }, 50);
-      Alert.alert("Success", "Link saved successfully!");
+      }, 100);
+
+
     } catch (error) {
       console.error('Error saving link:', error);
       Alert.alert("Error", "Failed to save link. Please try again.");
     }
-  };
+  }, [linkTitle, linkUrl, linkDescription, loadLinks, getLinkAnim]);
 
   const handleCloseModal = () => {
     setShowLinkModal(false);
@@ -335,8 +225,7 @@ export default function LinksScreen() {
     setLinkDescription("");
   };
 
-  // Sequential delete animation: fade out, slide, fade in rest
-  const handleDeleteLink = (linkId: number) => {
+  const handleDeleteLink = useCallback((linkId: number) => {
     Alert.alert(
       'Delete Link',
       'Are you sure you want to delete this link?',
@@ -346,67 +235,73 @@ export default function LinksScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            // 1. Fade out the link
-            await new Promise(res => {
-              Animated.timing(linkAnims[linkId]?.opacity || new Animated.Value(1), {
-                toValue: 0,
-                duration: 250,
-                useNativeDriver: true,
-              }).start(() => res(null));
-            });
+            const anim = getLinkAnim(linkId);
+            await new Promise(res => Animated.timing(anim.opacity, {
+              toValue: 0,
+              duration: 250,
+              useNativeDriver: true,
+            }).start(() => res(null)));
+
             try {
               await LinksService.deleteLink(linkId);
-              // 2. Slide others to new positions (after fade out)
-              const allLinks = await LinksService.getAllLinks();
-              const sortedLinks = allLinks.sort((a, b) => {
-                if (a.is_favorite && !b.is_favorite) return -1;
-                if (!a.is_favorite && b.is_favorite) return 1;
-                const dateA = new Date(a.updated_at || a.created_at || '').getTime();
-                const dateB = new Date(b.updated_at || b.created_at || '').getTime();
-                return dateB - dateA;
-              });
-              const filteredLinks = sortedLinks.filter(l => l.id !== linkId);
-              const prevPositions = links.map((l, idx) => ({ id: l.id, idx }));
-              const slidePromises: Promise<unknown>[] = [];
-              filteredLinks.forEach((link, idx) => {
-                if (typeof link.id === 'number') {
-                  const prev = prevPositions.find(p => p.id === link.id);
-                  const anim = getLinkAnim(link.id);
-                  if (prev && prev.idx !== idx) {
-                    anim.translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
-                    slidePromises.push(new Promise(slideRes => {
-                      Animated.timing(anim.translateY, {
-                        toValue: 0,
-                        duration: 350,
-                        useNativeDriver: true,
-                      }).start(() => slideRes(null));
-                    }));
-                  }
-                }
-              });
-              await Promise.all(slidePromises);
-              // 3. Remove the link from the list
-              setLinks(filteredLinks);
-              setTimeout(() => {
-                setLinkAnims(prev => {
-                  const copy = { ...prev };
-                  delete copy[linkId];
-                  return copy;
-                });
-              }, 50);
+              await loadLinks();
             } catch (error) {
               Alert.alert('Error', 'Failed to delete link');
+              anim.opacity.setValue(1); // Restore on error
             }
           },
         },
       ]
     );
-  };
+  }, [getLinkAnim, loadLinks]);
+
+  const memoizedRenderItem = useMemo(() => ({ item }: { item: Link }) => {
+    const anim = linkAnims[item.id as number] || { opacity: 1, translateY: 0 };
+    return (
+      <Animated.View
+        style={{
+          opacity: anim.opacity,
+          transform: [{ translateY: anim.translateY }],
+        }}
+      >
+        <View style={styles.linkCard}>
+          <View style={styles.linkHeader}>
+            <View style={styles.linkIcon}>
+              <Ionicons name="link" size={20} color="#fff" />
+            </View>
+            <View style={styles.linkInfo}>
+              <Text style={styles.linkTitle}>{item.title}</Text>
+              <Text style={styles.linkUrl} numberOfLines={1}>{item.url}</Text>
+            </View>
+            <TouchableOpacity style={styles.favoriteButton} onPress={() => toggleFavorite(item.id!)}>
+              <Ionicons
+                name={item.is_favorite ? "heart" : "heart-outline"}
+                size={22}
+                color={item.is_favorite ? "#FF6B6B" : "#8E9BA2"}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteLink(item.id!)}>
+              <Ionicons name="trash" size={20} color="#FF6B6B" />
+            </TouchableOpacity>
+          </View>
+          {item.description && <Text style={styles.linkDescription}>{item.description}</Text>}
+          <View style={styles.linkFooter}>
+            <View style={styles.tags}>
+              {(item.tags || []).map((tag, index) => (
+                <Text key={index} style={styles.tag}>#{tag}</Text>
+              ))}
+            </View>
+            <Text style={styles.linkDate}>{formatDate(item.updated_at || item.created_at || "")}</Text>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  }, [linkAnims, toggleFavorite, handleDeleteLink]);
+
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>
         <View style={styles.header}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#8E9BA2" />
@@ -419,103 +314,39 @@ export default function LinksScreen() {
             />
           </View>
           <TouchableOpacity style={styles.addButton} onPress={handleAddLink}>
-            <Ionicons name="add" size={24} color="#fff" />
+            <Ionicons name="add" size={28} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content}>
+        <View style={styles.content}>
           {loading ? (
             <View style={styles.loadingContainer}>
-            </View>
-          ) : links.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="link-outline" size={64} color="#4A5568" />
-              <Text style={styles.emptyTitle}>No Links Found</Text>
-              <Text style={styles.emptyText}>
-                {searchQuery ? "Try a different search term" : "Start saving your first link"}
-              </Text>
+              <Text style={styles.loadingText}>Loading Links...</Text>
             </View>
           ) : (
-            <View>
-              {links.map((link) => (
-                <Animated.View
-                  key={link.id}
-                  style={{
-                    opacity: typeof link.id === 'number' && linkAnims[link.id]?.opacity !== undefined ? linkAnims[link.id].opacity : 1,
-                    transform: [
-                      {
-                        translateY:
-                          typeof link.id === 'number' && linkAnims[link.id]?.translateY !== undefined
-                            ? linkAnims[link.id].translateY
-                            : 0,
-                      },
-                    ],
-                  }}
-                >
-                  <TouchableOpacity style={styles.linkCard}>
-                    <View style={styles.linkHeader}>
-                      <View style={styles.linkIcon}>
-                        <Ionicons name="link" size={20} color="#fff" style={{ textShadowColor: '#1A365D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
-                      </View>
-                      <View style={styles.linkInfo}>
-                        <Text style={styles.linkTitle}>{link.title}</Text>
-                        <Text style={styles.linkUrl}>{link.url}</Text>
-                      </View>
-                      <View style={{ alignItems: 'center' }}>
-                        <TouchableOpacity
-                          style={styles.favoriteButton}
-                          onPress={() => toggleFavorite(link.id!)}
-                        >
-                          <Ionicons
-                            name={link.is_favorite ? "heart" : "heart-outline"}
-                            size={16}
-                            color={link.is_favorite ? "#FF6B6B" : "#8E9BA2"}
-                          />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.deleteButton}
-                          onPress={() => handleDeleteLink(link.id!)}
-                        >
-                          <Ionicons name="trash" size={16} color="#FF6B6B" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    <Text style={styles.linkDescription} numberOfLines={2}>
-                      {link.description || "No description"}
-                    </Text>
-                    <View style={styles.linkFooter}>
-                      <View style={styles.tags}>
-                        {(link.tags || []).slice(0, 2).map((tag, index) => (
-                          <Text key={index} style={styles.tag}>
-                            #{tag}
-                          </Text>
-                        ))}
-                      </View>
-                      <Text style={styles.linkDate}>
-                        {formatDate(
-                          link.updated_at ||
-                            link.created_at ||
-                            ""
-                        )}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-            </View>
+            <Animated.FlatList
+              data={links}
+              renderItem={memoizedRenderItem}
+              keyExtractor={(item) => item.id!.toString()}
+              ListEmptyComponent={() => (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="link-outline" size={64} color="#4A5568" />
+                  <Text style={styles.emptyTitle}>No Links Found</Text>
+                  <Text style={styles.emptyText}>
+                    {searchQuery ? "Try a different search term" : "Add your first link to get started"}
+                  </Text>
+                </View>
+              )}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            />
           )}
-        </ScrollView>
         </View>
       </View>
 
-      {/* Add Link Modal */}
-      <CommonModal
-        visible={showLinkModal}
-        onClose={handleCloseModal}
-      >
+      <CommonModal visible={showLinkModal} onClose={handleCloseModal}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Save Link</Text>
-          <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
+          <Text style={styles.modalTitle}>Add New Link</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
             <Ionicons name="close" size={24} color="#8E9BA2" />
           </TouchableOpacity>
         </View>
