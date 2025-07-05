@@ -606,7 +606,12 @@ export default function NotesScreen() {
         </View>
       </CommonModal>
 
-      <CommonModal visible={showPreviewModal} onClose={() => setShowPreviewModal(false)}>
+      <CommonModal 
+        visible={showPreviewModal} 
+        onClose={() => setShowPreviewModal(false)}
+        maxHeight="90%"
+        minHeight={300}
+      >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>{previewNote?.title}</Text>
           <TouchableOpacity style={styles.closeButton} onPress={() => setShowPreviewModal(false)}>
@@ -614,21 +619,27 @@ export default function NotesScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.previewContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.previewText} selectable={true}>
-            {previewNote?.content}
-          </Text>
-        </ScrollView>
-
-        <View style={styles.previewFooter}>
-          <Text style={styles.previewDate}>
-            Created: {previewNote?.created_at ? formatDate(previewNote.created_at) : ''}
-          </Text>
-          {previewNote?.updated_at && previewNote.updated_at !== previewNote.created_at && (
-            <Text style={styles.previewDate}>
-              Updated: {formatDate(previewNote.updated_at)}
+        <View style={styles.previewContainer}>
+          <ScrollView 
+            style={styles.previewScrollContainer} 
+            contentContainerStyle={styles.previewScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.previewText} selectable={true}>
+              {previewNote?.content}
             </Text>
-          )}
+          </ScrollView>
+
+          <View style={styles.previewFooter}>
+            <Text style={styles.previewDate}>
+              Created: {previewNote?.created_at ? formatDate(previewNote.created_at) : ''}
+            </Text>
+            {previewNote?.updated_at && previewNote.updated_at !== previewNote.created_at && (
+              <Text style={styles.previewDate}>
+                Updated: {formatDate(previewNote.updated_at)}
+              </Text>
+            )}
+          </View>
         </View>
       </CommonModal>
     </SafeAreaView>
@@ -856,6 +867,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  previewContainer: {
+    flex: 1,
+    minHeight: 0,
+  },
+  previewScrollContainer: {
+    flex: 1,
+    minHeight: 0,
+  },
+  previewScrollContent: {
+    paddingBottom: 10,
+  },
   previewContent: {
     flex: 1,
     backgroundColor: "transparent",
@@ -875,7 +897,7 @@ const styles = StyleSheet.create({
   previewFooter: {
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: "#2A3441",
+    borderTopColor: "#2D3748",
     marginTop: 10,
   },
   previewDate: {

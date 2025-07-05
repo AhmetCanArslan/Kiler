@@ -345,7 +345,7 @@ export default function LinksScreen() {
         description: editLinkDescription.trim() || null // Use null for empty strings
       };
       
-      console.log('Updating link with data:', updateData); // Debug log
+
       const success = await LinksService.updateLink(editingLink.id, updateData);
 
       if (success) {
@@ -373,7 +373,7 @@ export default function LinksScreen() {
   }, []);
 
   const handlePreviewLink = useCallback((link: Link) => {
-    console.log('Preview link clicked:', link); // Debug log
+
     setPreviewLink(link);
     setShowPreviewModal(true);
   }, []);
@@ -593,8 +593,8 @@ export default function LinksScreen() {
       <CommonModal 
         visible={showPreviewModal} 
         onClose={handleClosePreviewModal}
-        maxHeight={previewLink?.description && previewLink.description.trim() ? '85%' : '60%'}
-        minHeight={previewLink?.description && previewLink.description.trim() ? 400 : 300}
+        maxHeight="90%"
+        minHeight={300}
       >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Link Preview</Text>
@@ -604,30 +604,32 @@ export default function LinksScreen() {
         </View>
 
         {previewLink ? (
-          <ScrollView 
-            style={styles.previewScrollContainer}
-            contentContainerStyle={styles.previewContent} 
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-          >
-            <Text style={styles.previewLabel}>Title</Text>
-            <Text style={styles.previewText} selectable={true}>
-              {previewLink.title}
-            </Text>
+          <View style={styles.previewContainer}>
+            <ScrollView 
+              style={styles.previewScrollContainer}
+              contentContainerStyle={styles.previewScrollContent} 
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+            >
+              <Text style={styles.previewLabel}>Title</Text>
+              <Text style={styles.previewText} selectable={true}>
+                {previewLink.title}
+              </Text>
 
-            <Text style={styles.previewLabel}>URL</Text>
-            <Text style={styles.previewText} selectable={true}>
-              {previewLink.url}
-            </Text>
+              <Text style={styles.previewLabel}>URL</Text>
+              <Text style={styles.previewText} selectable={true}>
+                {previewLink.url}
+              </Text>
 
-            {previewLink.description && previewLink.description.trim() && (
-              <>
-                <Text style={styles.previewLabel}>Description</Text>
-                <Text style={styles.previewText} selectable={true}>
-                  {previewLink.description}
-                </Text>
-              </>
-            )}
+              {previewLink.description && previewLink.description.trim() && (
+                <>
+                  <Text style={styles.previewLabel}>Description</Text>
+                  <Text style={styles.previewText} selectable={true}>
+                    {previewLink.description}
+                  </Text>
+                </>
+              )}
+            </ScrollView>
 
             <View style={styles.previewActions}>
               <TouchableOpacity style={styles.previewActionButton} onPress={handleCopyLinkUrl}>
@@ -647,7 +649,7 @@ export default function LinksScreen() {
                 <Text style={[styles.previewActionText, { color: "#9F7AEA" }]}>Open Link</Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
+          </View>
         ) : (
           <View style={styles.previewEmptyState}>
             <Text style={styles.previewEmptyText}>No link data available</Text>
@@ -983,9 +985,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   // Preview modal styles
+  previewContainer: {
+    flex: 1,
+    minHeight: 0,
+  },
   previewScrollContainer: {
     flex: 1,
-    minHeight: 0, // Allow ScrollView to shrink
+    minHeight: 0,
+  },
+  previewScrollContent: {
+    paddingBottom: 10,
   },
   previewContent: {
     paddingBottom: 20,
@@ -1025,7 +1034,10 @@ const styles = StyleSheet.create({
   previewActions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginTop: 20,
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#2D3748",
     gap: 10,
   },
   previewActionButton: {
