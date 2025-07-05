@@ -2,7 +2,7 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import GestureRoot from "../components/GestureRoot";
+// import GestureRoot from "../components/GestureRoot";
 import { initializeDatabase } from "../database/database";
 
 export default function RootLayout() {
@@ -20,12 +20,12 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureRoot>
+    <>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
       </Stack>
-    </GestureRoot>
+    </>
   );
 }

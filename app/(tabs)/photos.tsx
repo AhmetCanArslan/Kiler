@@ -20,7 +20,7 @@ import {
   View,
 } from "react-native";
 
-import ZoomableImage from "../../components/ZoomableImage";
+// import ZoomableImage from "../../components/ZoomableImage";
 
 import { Photo, PhotosService } from "../../database/photosService";
 
@@ -573,7 +573,7 @@ function PhotosScreen() {
               // disables horizontal scroll to prevent accidental tab switch
             >
               <View style={{ width: '100%', height: Dimensions.get('window').height * 0.7, alignItems: 'center', justifyContent: 'center' }}>
-                <ZoomableImage uri={previewPhoto.file_path} style={{ width: '90%', height: '100%' }} />
+                {/* <ZoomableImage uri={previewPhoto.file_path} style={{ width: '90%', height: '100%' }} /> */}
               </View>
             </ScrollView>
             <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 18 }} numberOfLines={2}>{previewPhoto.title}</Text>
