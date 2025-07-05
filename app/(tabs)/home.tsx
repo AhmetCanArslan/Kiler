@@ -24,6 +24,7 @@ interface RecentItem {
   type: "note" | "link" | "photo";
   title: string;
   date: string;
+  createdAt: number;
 }
 
 interface DatabaseStats {
@@ -66,35 +67,46 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
       const dbStats = await getDatabaseStats();
       setStats(dbStats as DatabaseStats);
 
-      // Load recent items
-      const recentNotes = await NotesService.getRecentNotes(2);
-      const recentLinks = await LinksService.getRecentLinks(2);
-      const recentPhotos = await PhotosService.getRecentPhotos(2);
+      // Load recent items - get all items and sort by creation date
+      const allNotes = await NotesService.getAllNotes();
+      const allLinks = await LinksService.getAllLinks();
+      const allPhotos = await PhotosService.getAllPhotos();
 
       const allRecent: RecentItem[] = [
-        ...recentNotes.map(note => ({
+        ...allNotes.map(note => ({
           id: note.id!,
           type: "note" as const,
           title: note.title,
-          date: formatDate(note.updated_at || note.created_at || ""),
+          date: note.created_at || "",
+          createdAt: new Date(note.created_at || "").getTime(),
         })),
-        ...recentLinks.map(link => ({
+        ...allLinks.map(link => ({
           id: link.id!,
           type: "link" as const,
           title: link.title,
-          date: formatDate(link.updated_at || link.created_at || ""),
+          date: link.created_at || "",
+          createdAt: new Date(link.created_at || "").getTime(),
         })),
-        ...recentPhotos.map(photo => ({
+        ...allPhotos.map(photo => ({
           id: photo.id!,
           type: "photo" as const,
           title: photo.title,
-          date: formatDate(photo.updated_at || photo.created_at || ""),
+          date: photo.created_at || "",
+          createdAt: new Date(photo.created_at || "").getTime(),
         })),
       ];
 
-      // Sort by date and take top 4
-      allRecent.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setRecentItems(allRecent.slice(0, 4));
+      // Sort by creation date (newest first) and take top 4
+      allRecent.sort((a, b) => b.createdAt - a.createdAt);
+      const recentItems = allRecent.slice(0, 4).map(item => ({
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        date: formatDate(item.date),
+        createdAt: item.createdAt,
+      }));
+      
+      setRecentItems(recentItems);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -330,7 +342,7 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Items</Text>
+            <Text style={styles.sectionTitle}>Recently added items</Text>
             {recentItems.map((item) => {
               let icon, color;
               if (item.type === 'note') {
