@@ -162,17 +162,15 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
         content: noteContent.trim(),
       });
 
-      Alert.alert("Success", "Note saved successfully!", [
-        {
-          text: "OK",
-          onPress: () => {
-            setShowNoteModal(false);
-            setNoteTitle("");
-            setNoteContent("");
-            loadData(); // Refresh data after saving
-          },
-        },
-      ]);
+      // Close modal and clear inputs immediately
+      setShowNoteModal(false);
+      setNoteTitle("");
+      setNoteContent("");
+      
+      // Refresh data immediately
+      loadData();
+
+      Alert.alert("Success", "Note saved successfully!");
     } catch (error) {
       console.error('Error saving note:', error);
       Alert.alert("Error", "Failed to save note. Please try again.");
@@ -238,14 +236,10 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
         taken_at: new Date().toISOString(),
       });
 
-      Alert.alert('Success', 'Photo saved successfully!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            loadData(); // Refresh data after saving
-          },
-        },
-      ]);
+      // Refresh data immediately
+      loadData();
+
+      Alert.alert('Success', 'Photo saved successfully!');
     } catch (error) {
       console.error('Error saving photo:', error);
       Alert.alert('Error', 'Failed to save photo');
@@ -277,18 +271,16 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
         description: linkDescription.trim(),
       });
 
-      Alert.alert("Success", "Link saved successfully!", [
-        {
-          text: "OK",
-          onPress: () => {
-            setShowLinkModal(false);
-            setLinkTitle("");
-            setLinkUrl("");
-            setLinkDescription("");
-            loadData(); // Refresh data after saving
-          },
-        },
-      ]);
+      // Close modal and clear inputs immediately
+      setShowLinkModal(false);
+      setLinkTitle("");
+      setLinkUrl("");
+      setLinkDescription("");
+      
+      // Refresh data immediately
+      loadData();
+
+      Alert.alert("Success", "Link saved successfully!");
     } catch (error) {
       console.error('Error saving link:', error);
       Alert.alert("Error", "Failed to save link. Please try again.");
