@@ -1,12 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
   FlatList,
+  Platform,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -328,6 +331,133 @@ function PhotosScreen() {
     );
   }, [photoAnims, toggleFavorite, handleDeletePhoto]);
 
+  // Take photo function
+  const handleTakePhoto = async () => {
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Camera permission is needed to take photos.');
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        await savePhoto(asset);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  // Pick image from gallery
+  const handlePickFromGallery = async () => {
+    try {
+      // Request media library permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Gallery permission is needed to select photos.');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        await savePhoto(asset);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  // Save photo to database
+  const savePhoto = async (asset: ImagePicker.ImagePickerAsset) => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Photo saving is not supported on web platform");
+      return;
+    }
+
+    try {
+      // Generate a title with date-time-seconds format
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      
+      const title = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+      const filename = asset.uri.split('/').pop() || 'untitled.jpg';
+
+      await PhotosService.createPhoto({
+        title: title,
+        description: `Photo taken on ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`,
+        file_path: asset.uri,
+        original_name: filename,
+        file_size: asset.fileSize,
+        width: asset.width,
+        height: asset.height,
+        mime_type: asset.mimeType,
+        tags: ['photo', 'captured'],
+        taken_at: now.toISOString(),
+      });
+
+      // Refresh photos list immediately
+      await loadPhotos();
+
+      Alert.alert('Success', 'Photo saved successfully!');
+    } catch (error) {
+      console.error('Error saving photo:', error);
+      Alert.alert('Error', 'Failed to save photo');
+    }
+  };
+
+  // Handle add photo button press
+  const handleAddPhoto = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Gallery'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleTakePhoto();
+          } else if (buttonIndex === 2) {
+            handlePickFromGallery();
+          }
+        }
+      );
+    } else {
+      // For Android, show alert with options
+      Alert.alert(
+        'Add Photo',
+        'Choose an option',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Take Photo', onPress: handleTakePhoto },
+          { text: 'Choose from Gallery', onPress: handlePickFromGallery },
+        ]
+      );
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -343,7 +473,7 @@ function PhotosScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
-          <TouchableOpacity style={styles.addButton}>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddPhoto}>
             <Ionicons name="camera" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
