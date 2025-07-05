@@ -602,7 +602,7 @@ export default function LinksScreen() {
         visible={showPreviewModal} 
         onClose={handleClosePreviewModal}
         maxHeight="90%"
-        minHeight={300}
+        minHeight={450}
       >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Link Preview</Text>
@@ -667,7 +667,12 @@ export default function LinksScreen() {
         )}
       </CommonModal>
 
-      <CommonModal visible={showLinkModal} onClose={handleCloseModal}>
+      <CommonModal 
+        visible={showLinkModal} 
+        onClose={handleCloseModal}
+        maxHeight="90%"
+        minHeight={440}
+      >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Add New Link</Text>
           <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
@@ -715,7 +720,12 @@ export default function LinksScreen() {
         </View>
       </CommonModal>
 
-      <CommonModal visible={showEditModal} onClose={handleCloseEditModal}>
+      <CommonModal 
+        visible={showEditModal} 
+        onClose={handleCloseEditModal}
+        maxHeight="90%"
+        minHeight={400}
+      >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Edit Link</Text>
           <TouchableOpacity style={styles.closeButton} onPress={handleCloseEditModal}>
