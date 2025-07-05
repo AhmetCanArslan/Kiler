@@ -449,6 +449,17 @@ export default function NotesScreen() {
                 {item.content.split(' ').length} words · {item.content.length} chars
               </Text>
             </View>
+          </View>
+          <Text style={styles.noteContent} numberOfLines={3}>{item.content}</Text>
+          <View style={styles.noteFooter}>
+            <View style={styles.tags}>
+              {(item.tags || []).map((tag, index) => (
+                <Text key={index} style={styles.tag}>#{tag}</Text>
+              ))}
+            </View>
+            <Text style={styles.noteCreatedAt}>{formatDate(item.updated_at || item.created_at || "")}</Text>
+          </View>
+          <View style={styles.noteActions}>
             <TouchableOpacity style={styles.favoriteButton} onPress={(e) => { e.stopPropagation(); toggleFavorite(item.id!); }}>
               <Ionicons
                 name={item.is_favorite ? "heart" : "heart-outline"}
@@ -465,15 +476,6 @@ export default function NotesScreen() {
             <TouchableOpacity style={styles.deleteButton} onPress={(e) => { e.stopPropagation(); handleDeleteNote(item.id!); }}>
               <Ionicons name="trash" size={20} color="#FF6B6B" />
             </TouchableOpacity>
-          </View>
-          <Text style={styles.noteContent} numberOfLines={3}>{item.content}</Text>
-          <View style={styles.noteFooter}>
-            <View style={styles.tags}>
-              {(item.tags || []).map((tag, index) => (
-                <Text key={index} style={styles.tag}>#{tag}</Text>
-              ))}
-            </View>
-            <Text style={styles.noteCreatedAt}>{formatDate(item.updated_at || item.created_at || "")}</Text>
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -737,7 +739,6 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 8,
-    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,
@@ -773,6 +774,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 12,
     fontStyle: "italic",
+  },
+  noteActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#2D3748",
   },
   noteFooter: {
     flexDirection: "row",
