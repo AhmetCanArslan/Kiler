@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Animated,
+  Dimensions,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -16,6 +17,20 @@ import {
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Note, NotesService } from "../../database/notesService";
+
+const { width: screenWidth } = Dimensions.get('window');
+const getResponsiveCardWidth = () => {
+  if (screenWidth < 768) {
+    // Mobile: tek sütun
+    return screenWidth - 40; // 20px padding her tarafta
+  } else if (screenWidth < 1024) {
+    // Tablet: iki sütun
+    return (screenWidth - 60) / 2; // 20px padding + 20px gap
+  } else {
+    // Desktop: üç sütun
+    return (screenWidth - 80) / 3; // 20px padding + 20px gaps
+  }
+};
 
 const CARD_HEIGHT = 120; // Approximate height of a note card (adjust if needed)
 
@@ -33,6 +48,15 @@ export default function NotesScreen() {
   const [noteAnims, setNoteAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewNote, setPreviewNote] = useState<Note | null>(null);
+  const [cardWidth, setCardWidth] = useState(getResponsiveCardWidth());
+
+  // Handle screen dimension changes
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setCardWidth(getResponsiveCardWidth());
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const getNoteAnim = useCallback((id: number) => {
     if (!noteAnims[id]) {
@@ -438,7 +462,7 @@ export default function NotesScreen() {
           overflow: 'hidden',
         }}
       >
-        <TouchableOpacity style={styles.noteCard} onPress={() => handlePreviewNote(item)}>
+        <TouchableOpacity style={[styles.noteCard, { width: cardWidth }]} onPress={() => handlePreviewNote(item)}>
           <View style={styles.noteHeader}>
             <View style={styles.noteIcon}>
               <Ionicons name="reader-outline" size={20} color="#fff" />
@@ -517,6 +541,9 @@ export default function NotesScreen() {
               data={notes}
               renderItem={memoizedRenderItem}
               keyExtractor={(item) => item.id!.toString()}
+              numColumns={screenWidth >= 768 ? (screenWidth >= 1024 ? 3 : 2) : 1}
+              key={screenWidth >= 768 ? (screenWidth >= 1024 ? 'three' : 'two') : 'one'}
+              columnWrapperStyle={screenWidth >= 768 ? styles.row : undefined}
               ListEmptyComponent={() => (
                 <View style={styles.emptyContainer}>
                   <Ionicons name="reader-outline" size={64} color="#4A5568" />
@@ -532,7 +559,12 @@ export default function NotesScreen() {
         </View>
       </View>
 
-      <CommonModal visible={showNoteModal} onClose={handleCloseModal}>
+      <CommonModal 
+        visible={showNoteModal} 
+        onClose={handleCloseModal}
+        maxHeight="90%"
+        minHeight={550}
+      >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Add New Note</Text>
           <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
@@ -570,7 +602,12 @@ export default function NotesScreen() {
         </View>
       </CommonModal>
 
-      <CommonModal visible={showEditModal} onClose={handleCloseEditModal}>
+      <CommonModal 
+        visible={showEditModal} 
+        onClose={handleCloseEditModal}
+        maxHeight="90%"
+        minHeight={550}
+      >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Edit Note</Text>
           <TouchableOpacity style={styles.closeButton} onPress={handleCloseEditModal}>
@@ -612,7 +649,7 @@ export default function NotesScreen() {
         visible={showPreviewModal} 
         onClose={() => setShowPreviewModal(false)}
         maxHeight="90%"
-        minHeight={300}
+        minHeight={600}
       >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>{previewNote?.title}</Text>
@@ -689,6 +726,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  row: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 0,
   },
   noteCard: {
     backgroundColor: "#1A202C",

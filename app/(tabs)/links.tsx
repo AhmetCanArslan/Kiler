@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Animated,
+  Dimensions,
   Linking,
   Platform,
   SafeAreaView,
@@ -17,6 +18,20 @@ import {
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Link, LinksService } from "../../database/linksService";
+
+const { width: screenWidth } = Dimensions.get('window');
+const getResponsiveCardWidth = () => {
+  if (screenWidth < 768) {
+    // Mobile: tek sütun
+    return screenWidth - 40; // 20px padding her tarafta
+  } else if (screenWidth < 1024) {
+    // Tablet: iki sütun
+    return (screenWidth - 60) / 2; // 20px padding + 20px gap
+  } else {
+    // Desktop: üç sütun
+    return (screenWidth - 80) / 3; // 20px padding + 20px gaps
+  }
+};
 
 const CARD_HEIGHT = 110; // Approximate height of a link card (adjust if needed)
 
@@ -36,6 +51,15 @@ export default function LinksScreen() {
   const [editLinkDescription, setEditLinkDescription] = useState("");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewLink, setPreviewLink] = useState<Link | null>(null);
+  const [cardWidth, setCardWidth] = useState(getResponsiveCardWidth());
+
+  // Handle screen dimension changes
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setCardWidth(getResponsiveCardWidth());
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const getLinkAnim = useCallback((id: number) => {
     if (!linkAnims[id]) {
@@ -506,7 +530,7 @@ export default function LinksScreen() {
           overflow: 'hidden',
         }}
       >
-        <View style={styles.linkCard}>
+        <View style={[styles.linkCard, { width: cardWidth }]}>
           <TouchableOpacity
             style={styles.linkCardContent}
             onPress={() => handlePreviewLink(item)}
@@ -592,6 +616,9 @@ export default function LinksScreen() {
               data={links}
               renderItem={memoizedRenderItem}
               keyExtractor={(item) => item.id!.toString()}
+              numColumns={screenWidth >= 768 ? (screenWidth >= 1024 ? 3 : 2) : 1}
+              key={screenWidth >= 768 ? (screenWidth >= 1024 ? 'three' : 'two') : 'one'}
+              columnWrapperStyle={screenWidth >= 768 ? styles.row : undefined}
               contentContainerStyle={{ paddingBottom: 20 }}
             />
           )}
@@ -816,6 +843,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  row: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 0,
   },
   linkCard: {
     backgroundColor: "#1A202C",
