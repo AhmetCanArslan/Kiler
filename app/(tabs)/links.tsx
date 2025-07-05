@@ -340,6 +340,7 @@ export default function LinksScreen() {
     try {
       // Always include description field to ensure it can be cleared
       const updateData = {
+
         title: editLinkTitle.trim(),
         url: editLinkUrl.trim(),
         description: editLinkDescription.trim() || null // Use null for empty strings
@@ -408,9 +409,16 @@ export default function LinksScreen() {
   const handleOpenLink = useCallback(async () => {
     if (!previewLink) return;
     try {
-      const canOpen = await Linking.canOpenURL(previewLink.url);
+      let url = previewLink.url.trim();
+      
+      // Ensure URL has a protocol
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      
+      const canOpen = await Linking.canOpenURL(url);
       if (canOpen) {
-        await Linking.openURL(previewLink.url);
+        await Linking.openURL(url);
       } else {
         Alert.alert("Error", "Cannot open this URL");
       }
@@ -611,24 +619,26 @@ export default function LinksScreen() {
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled={true}
             >
-              <Text style={styles.previewLabel}>Title</Text>
-              <Text style={styles.previewText} selectable={true}>
-                {previewLink.title}
-              </Text>
+              <View style={styles.previewContent}>
+                <Text style={styles.previewLabel}>Title</Text>
+                <Text style={styles.previewText} selectable={true}>
+                  {previewLink.title}
+                </Text>
 
-              <Text style={styles.previewLabel}>URL</Text>
-              <Text style={styles.previewText} selectable={true}>
-                {previewLink.url}
-              </Text>
+                <Text style={styles.previewLabel}>URL</Text>
+                <Text style={styles.previewText} selectable={true}>
+                  {previewLink.url}
+                </Text>
 
-              {previewLink.description && previewLink.description.trim() && (
-                <>
-                  <Text style={styles.previewLabel}>Description</Text>
-                  <Text style={styles.previewText} selectable={true}>
-                    {previewLink.description}
-                  </Text>
-                </>
-              )}
+                {previewLink.description && previewLink.description.trim() && (
+                  <>
+                    <Text style={styles.previewLabel}>Description</Text>
+                    <Text style={styles.previewText} selectable={true}>
+                      {previewLink.description}
+                    </Text>
+                  </>
+                )}
+              </View>
             </ScrollView>
 
             <View style={styles.previewActions}>
@@ -987,19 +997,17 @@ const styles = StyleSheet.create({
   // Preview modal styles
   previewContainer: {
     flex: 1,
-    minHeight: 0,
+    maxHeight: '100%',
   },
   previewScrollContainer: {
     flex: 1,
-    minHeight: 0,
+    maxHeight: '100%',
   },
   previewScrollContent: {
-    paddingBottom: 10,
+    flexGrow: 1,
   },
   previewContent: {
-    paddingBottom: 20,
-    flexGrow: 1,
-    flexShrink: 0, // Don't allow content to shrink
+    paddingBottom: 0,
   },
   previewEmptyState: {
     padding: 20,
