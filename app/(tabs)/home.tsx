@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Platform,
@@ -48,20 +49,8 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     tags_count: 0,
     collections_count: 0,
   });
-  // Fade animations removed
-  // const fadeAnim = useRef(new Animated.Value(0)).current;
-  // const screenFadeAnim = useRef(new Animated.Value(0)).current;
-  // const contentOpacityAnim = useRef(new Animated.Value(1)).current;
 
-  // Load data on component mount
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Only fade animation when screen comes into focus, avoid duplicate data loading
-  // Fade animation on focus removed
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     // Skip database operations on web platform
     if (Platform.OS === 'web') {
       return;
@@ -104,7 +93,22 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     } catch (error) {
       console.error('Error loading data:', error);
     }
-  };
+  }, []);
+
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Refresh home data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  // Only fade animation when screen comes into focus, avoid duplicate data loading
+  // Fade animation on focus removed
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

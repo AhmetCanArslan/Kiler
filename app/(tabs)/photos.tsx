@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -101,6 +102,15 @@ function PhotosScreen() {
       loadPhotos(true);
     }
   }, [searchQuery, loadPhotos, searchPhotos]);
+
+  // Refresh photos when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (!searchQuery.trim()) {
+        loadPhotos(false); // Don't show loading indicator on focus refresh
+      }
+    }, [loadPhotos, searchQuery])
+  );
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

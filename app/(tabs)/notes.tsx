@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -99,6 +100,15 @@ export default function NotesScreen() {
       loadNotes(true);
     }
   }, [searchQuery, loadNotes, searchNotes]);
+
+  // Refresh notes when screen comes into focus (e.g., after adding from home screen)
+  useFocusEffect(
+    useCallback(() => {
+      if (!searchQuery.trim()) {
+        loadNotes(false); // Don't show loading indicator on focus refresh
+      }
+    }, [loadNotes, searchQuery])
+  );
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

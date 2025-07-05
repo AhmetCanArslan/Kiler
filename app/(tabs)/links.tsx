@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -161,6 +162,15 @@ export default function LinksScreen() {
       loadLinks(true);
     }
   }, [searchQuery, loadLinks, searchLinks]);
+
+  // Refresh links when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (!searchQuery.trim()) {
+        loadLinks(false); // Don't show loading indicator on focus refresh
+      }
+    }, [loadLinks, searchQuery])
+  );
 
 
   const toggleFavorite = useCallback(async (linkId: number) => {
