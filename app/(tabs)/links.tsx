@@ -24,13 +24,15 @@ export default function LinksScreen() {
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
-  const [linkAnims, setLinkAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
+  const [linkAnims, setLinkAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
 
   const getLinkAnim = useCallback((id: number) => {
     if (!linkAnims[id]) {
       const newAnim = {
         opacity: new Animated.Value(1),
         translateY: new Animated.Value(0),
+        translateX: new Animated.Value(0),
+        scaleY: new Animated.Value(1),
       };
       setLinkAnims(prev => ({ ...prev, [id]: newAnim }));
       return newAnim;
@@ -52,14 +54,14 @@ export default function LinksScreen() {
   const animateFavoriteMove = useCallback(async (oldIdx: number, newIdx: number, linkId: number) => {
     const anim = getLinkAnim(linkId);
 
-    // 1. Fade out
+    // 1. Fade out the item
     await new Promise(res => Animated.timing(anim.opacity, {
       toValue: 0,
-      duration: 200,
+      duration: 120,
       useNativeDriver: true,
     }).start(() => res(null)));
 
-    // 2. Update state to get new positions, but keep item invisible
+    // 2. Update list immediately
     setLinks(prevLinks => {
       const newLinks = [...prevLinks];
       const [movedLink] = newLinks.splice(oldIdx, 1);
@@ -67,36 +69,42 @@ export default function LinksScreen() {
       return newLinks;
     });
 
-    // 3. Animate other items sliding
+    // 3. Slide down animation for items that need to move
     await new Promise(resolve => {
-      Animated.stagger(50,
-        links
-          .filter(l => l.id !== linkId)
-          .map(l => {
-            const lAnim = getLinkAnim(l.id as number);
-            lAnim.translateY.setValue(CARD_HEIGHT); // Move down initially
-            return Animated.spring(lAnim.translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-            });
-          })
-      ).start(() => resolve(null));
+      const slideAnimations = links
+        .filter((link, index) => link.id !== linkId && index >= newIdx)
+        .map(link => {
+          const linkAnim = getLinkAnim(link.id as number);
+          linkAnim.translateY.setValue(-CARD_HEIGHT);
+          return Animated.timing(linkAnim.translateY, {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: true,
+          });
+        });
+
+      if (slideAnimations.length > 0) {
+        Animated.parallel(slideAnimations).start(() => resolve(null));
+      } else {
+        resolve(null);
+      }
     });
 
-
-    // 4. Fade in at new position
-    anim.translateY.setValue(0); // Reset position before fade in
+    // 4. Fade in the favorite item at new position
+    anim.translateY.setValue(0);
     await new Promise(res => Animated.timing(anim.opacity, {
       toValue: 1,
-      duration: 200,
+      duration: 120,
       useNativeDriver: true,
     }).start(() => res(null)));
 
   }, [getLinkAnim, links]);
 
-  const loadLinks = useCallback(async () => {
+  const loadLinks = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) {
+        setLoading(true);
+      }
       const allLinks = await LinksService.getAllLinks();
       const sortedLinks = allLinks.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -107,12 +115,14 @@ export default function LinksScreen() {
       });
 
       setLinkAnims(prev => {
-        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = {};
+        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } } = {};
         sortedLinks.forEach(link => {
           if (link.id) {
             newAnims[link.id] = prev[link.id] || {
               opacity: new Animated.Value(1),
               translateY: new Animated.Value(0),
+              translateX: new Animated.Value(0),
+              scaleY: new Animated.Value(1),
             };
           }
         });
@@ -124,7 +134,9 @@ export default function LinksScreen() {
       console.error('Error loading links:', error);
       Alert.alert('Error', 'Failed to load links');
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -146,7 +158,7 @@ export default function LinksScreen() {
     if (searchQuery.trim()) {
       searchLinks();
     } else {
-      loadLinks();
+      loadLinks(true);
     }
   }, [searchQuery, loadLinks, searchLinks]);
 
@@ -197,19 +209,69 @@ export default function LinksScreen() {
       });
 
       handleCloseModal();
-      await loadLinks();
 
-      setTimeout(() => {
+      // Create the new link object
+      const newLink = {
+        id: newLinkId,
+        title: linkTitle.trim(),
+        url: linkUrl.trim(),
+        description: linkDescription.trim() || undefined,
+        is_favorite: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        tags: []
+      };
+
+      // Add animation for the new link
+      const newAnim = {
+        opacity: new Animated.Value(0),
+        translateY: new Animated.Value(0),
+        translateX: new Animated.Value(0),
+        scaleY: new Animated.Value(1),
+      };
+      setLinkAnims(prev => ({ ...prev, [newLinkId]: newAnim }));
+
+      // Update the list by adding the new link at the top (it's not favorited so goes after favorites)
+      setLinks(prevLinks => {
+        const favoriteLinks = prevLinks.filter(link => link.is_favorite);
+        const regularLinks = prevLinks.filter(link => !link.is_favorite);
+        return [...favoriteLinks, newLink, ...regularLinks];
+      });
+
+      // Sequential add animation: slide down others → fade in new item
+      setTimeout(async () => {
         const anim = getLinkAnim(newLinkId);
         if (anim) {
-          anim.opacity.setValue(0);
+          // 1. Slide down items that are below the new item
+          await new Promise(resolve => {
+            const currentFavoriteCount = links.filter(link => link.is_favorite).length;
+            const slideAnimations = links
+              .filter((link, index) => index >= currentFavoriteCount) // Items after favorites
+              .map(link => {
+                const linkAnim = getLinkAnim(link.id as number);
+                linkAnim.translateY.setValue(-CARD_HEIGHT);
+                return Animated.timing(linkAnim.translateY, {
+                  toValue: 0,
+                  duration: 180,
+                  useNativeDriver: true,
+                });
+              });
+
+            if (slideAnimations.length > 0) {
+              Animated.parallel(slideAnimations).start(() => resolve(null));
+            } else {
+              resolve(null);
+            }
+          });
+
+          // 2. Fade in the new item
           Animated.timing(anim.opacity, {
             toValue: 1,
-            duration: 350,
+            duration: 120,
             useNativeDriver: true,
           }).start();
         }
-      }, 100);
+      }, 50);
 
 
     } catch (error) {
@@ -236,32 +298,71 @@ export default function LinksScreen() {
           style: 'destructive',
           onPress: async () => {
             const anim = getLinkAnim(linkId);
-            await new Promise(res => Animated.timing(anim.opacity, {
-              toValue: 0,
-              duration: 250,
-              useNativeDriver: true,
-            }).start(() => res(null)));
+            const linkIndex = links.findIndex(l => l.id === linkId);
+
+            // 1. Fade out and slide the item simultaneously
+            await new Promise(res => {
+              Animated.parallel([
+                Animated.timing(anim.opacity, {
+                  toValue: 0,
+                  duration: 200,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(anim.translateX, {
+                  toValue: -300, // Slide left off screen
+                  duration: 200,
+                  useNativeDriver: true,
+                })
+              ]).start(() => res(null));
+            });
 
             try {
               await LinksService.deleteLink(linkId);
-              await loadLinks();
+              
+              // 2. Collapse the item by animating its scaleY to 0
+              // This creates the gap-closing effect without re-rendering the list
+              await new Promise(resolve => {
+                Animated.timing(anim.scaleY, {
+                  toValue: 0,
+                  duration: 200,
+                  useNativeDriver: true,
+                }).start(() => resolve(null));
+              });
+              
+              // 3. Now safely update the list - items are already in their final visual positions
+              setLinks(prevLinks => prevLinks.filter(link => link.id !== linkId));
+              
+              // 4. Clean up animation state for deleted item
+              setLinkAnims(prev => {
+                const newAnims = { ...prev };
+                delete newAnims[linkId];
+                return newAnims;
+              });
+
             } catch (error) {
               Alert.alert('Error', 'Failed to delete link');
               anim.opacity.setValue(1); // Restore on error
+              anim.translateX.setValue(0); // Restore position
+              anim.scaleY.setValue(1); // Restore scale
             }
           },
         },
       ]
     );
-  }, [getLinkAnim, loadLinks]);
+  }, [getLinkAnim, links]);
 
   const memoizedRenderItem = useMemo(() => ({ item }: { item: Link }) => {
-    const anim = linkAnims[item.id as number] || { opacity: 1, translateY: 0 };
+    const anim = linkAnims[item.id as number] || { opacity: 1, translateY: 0, translateX: 0, scaleY: 1 };
     return (
       <Animated.View
         style={{
           opacity: anim.opacity,
-          transform: [{ translateY: anim.translateY }],
+          transform: [
+            { translateY: anim.translateY },
+            { translateX: anim.translateX },
+            { scaleY: anim.scaleY }
+          ],
+          overflow: 'hidden',
         }}
       >
         <View style={styles.linkCard}>
@@ -323,20 +424,19 @@ export default function LinksScreen() {
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Loading Links...</Text>
             </View>
+          ) : links.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="link-outline" size={64} color="#4A5568" />
+              <Text style={styles.emptyTitle}>No Links Found</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery ? "Try a different search term" : "Add your first link to get started"}
+              </Text>
+            </View>
           ) : (
             <Animated.FlatList
               data={links}
               renderItem={memoizedRenderItem}
               keyExtractor={(item) => item.id!.toString()}
-              ListEmptyComponent={() => (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="link-outline" size={64} color="#4A5568" />
-                  <Text style={styles.emptyTitle}>No Links Found</Text>
-                  <Text style={styles.emptyText}>
-                    {searchQuery ? "Try a different search term" : "Add your first link to get started"}
-                  </Text>
-                </View>
-              )}
               contentContainerStyle={{ paddingBottom: 20 }}
             />
           )}

@@ -23,13 +23,15 @@ export default function NotesScreen() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
-  const [noteAnims, setNoteAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
+  const [noteAnims, setNoteAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
 
   const getNoteAnim = useCallback((id: number) => {
     if (!noteAnims[id]) {
       const newAnim = {
         opacity: new Animated.Value(1),
         translateY: new Animated.Value(0),
+        translateX: new Animated.Value(0),
+        scaleY: new Animated.Value(1),
       };
       setNoteAnims(prev => ({ ...prev, [id]: newAnim }));
       return newAnim;
@@ -37,9 +39,11 @@ export default function NotesScreen() {
     return noteAnims[id];
   }, [noteAnims]);
 
-  const loadNotes = useCallback(async () => {
+  const loadNotes = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) {
+        setLoading(true);
+      }
       const allNotes = await NotesService.getAllNotes();
       const sortedNotes = allNotes.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -50,12 +54,14 @@ export default function NotesScreen() {
       });
 
       setNoteAnims(prev => {
-        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = {};
+        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } } = {};
         sortedNotes.forEach(note => {
           if (note.id) {
             newAnims[note.id] = prev[note.id] || {
               opacity: new Animated.Value(1),
               translateY: new Animated.Value(0),
+              translateX: new Animated.Value(0),
+              scaleY: new Animated.Value(1),
             };
           }
         });
@@ -67,7 +73,9 @@ export default function NotesScreen() {
       console.error('Error loading notes:', error);
       Alert.alert('Error', 'Failed to load notes');
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -88,7 +96,7 @@ export default function NotesScreen() {
     if (searchQuery.trim()) {
       searchNotes();
     } else {
-      loadNotes();
+      loadNotes(true);
     }
   }, [searchQuery, loadNotes, searchNotes]);
 
@@ -107,12 +115,14 @@ export default function NotesScreen() {
   const animateFavoriteMove = useCallback(async (oldIdx: number, newIdx: number, noteId: number) => {
     const anim = getNoteAnim(noteId);
 
+    // 1. Fade out the item
     await new Promise(res => Animated.timing(anim.opacity, {
       toValue: 0,
-      duration: 200,
+      duration: 120,
       useNativeDriver: true,
     }).start(() => res(null)));
 
+    // 2. Update list immediately
     setNotes(prevNotes => {
       const newNotes = [...prevNotes];
       const [movedNote] = newNotes.splice(oldIdx, 1);
@@ -120,29 +130,37 @@ export default function NotesScreen() {
       return newNotes;
     });
 
+    // 3. Slide down animation for items that need to move
     await new Promise(resolve => {
-      Animated.stagger(50,
-        notes
-          .filter(n => n.id !== noteId)
-          .map(n => {
-            const nAnim = getNoteAnim(n.id as number);
-            nAnim.translateY.setValue(CARD_HEIGHT);
-            return Animated.spring(nAnim.translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-            });
-          })
-      ).start(() => resolve(null));
+      const slideAnimations = notes
+        .filter((note, index) => note.id !== noteId && index >= newIdx)
+        .map(note => {
+          const noteAnim = getNoteAnim(note.id as number);
+          noteAnim.translateY.setValue(-CARD_HEIGHT);
+          return Animated.timing(noteAnim.translateY, {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: true,
+          });
+        });
+
+      if (slideAnimations.length > 0) {
+        Animated.parallel(slideAnimations).start(() => resolve(null));
+      } else {
+        resolve(null);
+      }
     });
 
+    // 4. Fade in the favorite item at new position
     anim.translateY.setValue(0);
     await new Promise(res => Animated.timing(anim.opacity, {
       toValue: 1,
-      duration: 200,
+      duration: 120,
       useNativeDriver: true,
     }).start(() => res(null)));
 
   }, [getNoteAnim, notes]);
+  
 
   const toggleFavorite = useCallback(async (noteId: number) => {
     try {
@@ -189,19 +207,68 @@ export default function NotesScreen() {
       });
 
       handleCloseModal();
-      await loadNotes();
 
-      setTimeout(() => {
+      // Create the new note object
+      const newNote = {
+        id: newNoteId,
+        title: noteTitle.trim(),
+        content: noteContent.trim(),
+        is_favorite: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        tags: []
+      };
+
+      // Add animation for the new note
+      const newAnim = {
+        opacity: new Animated.Value(0),
+        translateY: new Animated.Value(0),
+        translateX: new Animated.Value(0),
+        scaleY: new Animated.Value(1),
+      };
+      setNoteAnims(prev => ({ ...prev, [newNoteId]: newAnim }));
+
+      // Update the list by adding the new note at the top (it's not favorited so goes after favorites)
+      setNotes(prevNotes => {
+        const favoriteNotes = prevNotes.filter(note => note.is_favorite);
+        const regularNotes = prevNotes.filter(note => !note.is_favorite);
+        return [...favoriteNotes, newNote, ...regularNotes];
+      });
+
+      // Sequential add animation: slide down others → fade in new item
+      setTimeout(async () => {
         const anim = getNoteAnim(newNoteId);
         if (anim) {
-          anim.opacity.setValue(0);
+          // 1. Slide down items that are below the new item
+          await new Promise(resolve => {
+            const currentFavoriteCount = notes.filter(note => note.is_favorite).length;
+            const slideAnimations = notes
+              .filter((note, index) => index >= currentFavoriteCount) // Items after favorites
+              .map(note => {
+                const noteAnim = getNoteAnim(note.id as number);
+                noteAnim.translateY.setValue(-CARD_HEIGHT);
+                return Animated.timing(noteAnim.translateY, {
+                  toValue: 0,
+                  duration: 180,
+                  useNativeDriver: true,
+                });
+              });
+
+            if (slideAnimations.length > 0) {
+              Animated.parallel(slideAnimations).start(() => resolve(null));
+            } else {
+              resolve(null);
+            }
+          });
+
+          // 2. Fade in the new item
           Animated.timing(anim.opacity, {
             toValue: 1,
-            duration: 350,
+            duration: 120,
             useNativeDriver: true,
           }).start();
         }
-      }, 100);
+      }, 50);
 
     } catch (error) {
       console.error('Error saving note:', error);
@@ -226,32 +293,69 @@ export default function NotesScreen() {
           style: 'destructive',
           onPress: async () => {
             const anim = getNoteAnim(noteId);
-            await new Promise(res => Animated.timing(anim.opacity, {
-              toValue: 0,
-              duration: 250,
-              useNativeDriver: true,
-            }).start(() => res(null)));
+            const noteIndex = notes.findIndex(n => n.id === noteId);
+
+            // 1. Fade out and slide left in parallel
+            await new Promise(res => Animated.parallel([
+              Animated.timing(anim.opacity, {
+                toValue: 0,
+                duration: 120,
+                useNativeDriver: true,
+              }),
+              Animated.timing(anim.translateX, {
+                toValue: -300,
+                duration: 120,
+                useNativeDriver: true,
+              })
+            ]).start(() => res(null)));
 
             try {
               await NotesService.deleteNote(noteId);
-              await loadNotes();
+              
+              // 2. Collapse the faded item by animating its scaleY to 0
+              // This creates the gap-closing effect without re-rendering the list
+              await new Promise(resolve => {
+                Animated.timing(anim.scaleY, {
+                  toValue: 0,
+                  duration: 250,
+                  useNativeDriver: true,
+                }).start(() => resolve(null));
+              });
+              
+              // 3. Now safely update the list - items are already in their final visual positions
+              setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+              
+              // 4. Clean up animation state for deleted item
+              setNoteAnims(prev => {
+                const newAnims = { ...prev };
+                delete newAnims[noteId];
+                return newAnims;
+              });
+
             } catch (error) {
               Alert.alert('Error', 'Failed to delete note');
               anim.opacity.setValue(1); // Restore on error
+              anim.translateX.setValue(0); // Restore position
+              anim.scaleY.setValue(1); // Restore scale
             }
           },
         },
       ]
     );
-  }, [getNoteAnim, loadNotes]);
+  }, [getNoteAnim, notes]);
 
   const memoizedRenderItem = useMemo(() => ({ item }: { item: Note }) => {
-    const anim = noteAnims[item.id as number] || { opacity: 1, translateY: 0 };
+    const anim = noteAnims[item.id as number] || { opacity: 1, translateY: 0, translateX: 0, scaleY: 1 };
     return (
       <Animated.View
         style={{
           opacity: anim.opacity,
-          transform: [{ translateY: anim.translateY }],
+          transform: [
+            { translateY: anim.translateY },
+            { translateX: anim.translateX },
+            { scaleY: anim.scaleY }
+          ],
+          overflow: 'hidden',
         }}
       >
         <View style={styles.noteCard}>
@@ -311,8 +415,14 @@ export default function NotesScreen() {
 
         <View style={styles.content}>
           {loading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading Notes...</Text>
+            <View style={styles.loadingContainer} />
+          ) : notes.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="reader-outline" size={64} color="#4A5568" />
+              <Text style={styles.emptyTitle}>No Notes Found</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery ? "Try a different search term" : "Create your first note to get started"}
+              </Text>
             </View>
           ) : (
             <Animated.FlatList

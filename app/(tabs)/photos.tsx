@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -15,23 +16,24 @@ import {
 
 import { Photo, PhotosService } from "../../database/photosService";
 
-
-
 const { width } = Dimensions.get("window");
 const imageSize = (width - 75) / 2;
+const CARD_HEIGHT = 180; // Approximate height of a photo card (adjust if needed)
 
 function PhotosScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [photoAnims, setPhotoAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
-  const containerRef = useRef<View>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [photoAnims, setPhotoAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
 
   const getPhotoAnim = useCallback((id: number) => {
     if (!photoAnims[id]) {
       const newAnim = {
         opacity: new Animated.Value(1),
         translateY: new Animated.Value(0),
+        translateX: new Animated.Value(0),
+        scaleY: new Animated.Value(1),
       };
       setPhotoAnims(prev => ({ ...prev, [id]: newAnim }));
       return newAnim;
@@ -39,9 +41,11 @@ function PhotosScreen() {
     return photoAnims[id];
   }, [photoAnims]);
 
-  const loadPhotos = useCallback(async () => {
+  const loadPhotos = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) {
+        setLoading(true);
+      }
       const allPhotos = await PhotosService.getAllPhotos();
       const sortedPhotos = allPhotos.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -52,12 +56,14 @@ function PhotosScreen() {
       });
 
       setPhotoAnims(prev => {
-        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = {};
+        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } } = {};
         sortedPhotos.forEach(photo => {
           if (photo.id) {
             newAnims[photo.id] = prev[photo.id] || {
               opacity: new Animated.Value(1),
               translateY: new Animated.Value(0),
+              translateX: new Animated.Value(0),
+              scaleY: new Animated.Value(1),
             };
           }
         });
@@ -69,7 +75,9 @@ function PhotosScreen() {
       console.error('Error loading photos:', error);
       Alert.alert('Error', 'Failed to load photos');
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -90,7 +98,7 @@ function PhotosScreen() {
     if (searchQuery.trim()) {
       searchPhotos();
     } else {
-      loadPhotos();
+      loadPhotos(true);
     }
   }, [searchQuery, loadPhotos, searchPhotos]);
 
@@ -109,12 +117,14 @@ function PhotosScreen() {
   const animateFavoriteMove = useCallback(async (oldIdx: number, newIdx: number, photoId: number) => {
     const anim = getPhotoAnim(photoId);
 
+    // 1. Fade out the item
     await new Promise(res => Animated.timing(anim.opacity, {
       toValue: 0,
-      duration: 200,
+      duration: 120,
       useNativeDriver: true,
     }).start(() => res(null)));
 
+    // 2. Update list immediately
     setPhotos(prevPhotos => {
       const newPhotos = [...prevPhotos];
       const [movedPhoto] = newPhotos.splice(oldIdx, 1);
@@ -122,25 +132,32 @@ function PhotosScreen() {
       return newPhotos;
     });
 
+    // 3. Slide down animation for items that need to move
     await new Promise(resolve => {
-      Animated.stagger(50,
-        photos
-          .filter(p => p.id !== photoId)
-          .map(p => {
-            const pAnim = getPhotoAnim(p.id as number);
-            pAnim.translateY.setValue(imageSize + 20); // Approximate height
-            return Animated.spring(pAnim.translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-            });
-          })
-      ).start(() => resolve(null));
+      const slideAnimations = photos
+        .filter((photo, index) => photo.id !== photoId && index >= newIdx)
+        .map(photo => {
+          const photoAnim = getPhotoAnim(photo.id as number);
+          photoAnim.translateY.setValue(-CARD_HEIGHT);
+          return Animated.timing(photoAnim.translateY, {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: true,
+          });
+        });
+
+      if (slideAnimations.length > 0) {
+        Animated.parallel(slideAnimations).start(() => resolve(null));
+      } else {
+        resolve(null);
+      }
     });
 
+    // 4. Fade in the favorite item at new position
     anim.translateY.setValue(0);
     await new Promise(res => Animated.timing(anim.opacity, {
       toValue: 1,
-      duration: 200,
+      duration: 120,
       useNativeDriver: true,
     }).start(() => res(null)));
 
@@ -182,34 +199,71 @@ function PhotosScreen() {
           style: 'destructive',
           onPress: async () => {
             const anim = getPhotoAnim(photoId);
-            await new Promise(res => Animated.timing(anim.opacity, {
-              toValue: 0,
-              duration: 250,
-              useNativeDriver: true,
-            }).start(() => res(null)));
+            const photoIndex = photos.findIndex(p => p.id === photoId);
+
+            // 1. Fade out and slide left in parallel
+            await new Promise(res => Animated.parallel([
+              Animated.timing(anim.opacity, {
+                toValue: 0,
+                duration: 120,
+                useNativeDriver: true,
+              }),
+              Animated.timing(anim.translateX, {
+                toValue: -300,
+                duration: 120,
+                useNativeDriver: true,
+              })
+            ]).start(() => res(null)));
 
             try {
               await PhotosService.deletePhoto(photoId);
-              await loadPhotos();
+              
+              // 2. Collapse the faded item by animating its scaleY to 0
+              // This creates the gap-closing effect without re-rendering the list
+              await new Promise(resolve => {
+                Animated.timing(anim.scaleY, {
+                  toValue: 0,
+                  duration: 250,
+                  useNativeDriver: true,
+                }).start(() => resolve(null));
+              });
+              
+              // 3. Now safely update the list - items are already in their final visual positions
+              setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== photoId));
+              
+              // 4. Clean up animation state for deleted item
+              setPhotoAnims(prev => {
+                const newAnims = { ...prev };
+                delete newAnims[photoId];
+                return newAnims;
+              });
+
             } catch (error) {
               Alert.alert('Error', 'Failed to delete photo');
               anim.opacity.setValue(1); // Restore on error
+              anim.translateX.setValue(0); // Restore position
+              anim.scaleY.setValue(1); // Restore scale
             }
           },
         },
       ]
     );
-  }, [getPhotoAnim, loadPhotos]);
+  }, [getPhotoAnim, loadPhotos, photos]);
 
   const memoizedRenderItem = useMemo(() => ({ item }: { item: Photo }) => {
-    const anim = photoAnims[item.id as number] || { opacity: 1, translateY: 0 };
+    const anim = photoAnims[item.id as number] || { opacity: new Animated.Value(1), translateY: new Animated.Value(0), translateX: new Animated.Value(0), scaleY: new Animated.Value(1) };
     return (
       <Animated.View
         style={{
           opacity: anim.opacity,
-          transform: [{ translateY: anim.translateY }],
+          transform: [
+            { translateY: anim.translateY },
+            { translateX: anim.translateX },
+            { scaleY: anim.scaleY }
+          ],
           width: imageSize,
           marginBottom: 15,
+          overflow: 'hidden',
         }}
       >
         <TouchableOpacity style={styles.photoCard}>
@@ -286,7 +340,7 @@ function PhotosScreen() {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading Photos...</Text>
+            <ActivityIndicator size="large" color="#F6AD55" />
           </View>
         ) : photos.length === 0 ? (
           <View style={styles.emptyContainer}>
