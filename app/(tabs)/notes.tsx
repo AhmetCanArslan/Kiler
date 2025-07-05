@@ -18,6 +18,20 @@ import { Note, NotesService } from "../../database/notesService";
 const CARD_HEIGHT = 120; // Approximate height of a note card (adjust if needed)
 
 export default function NotesScreen() {
+  // Helper: get or create anim object for a note id
+  const getNoteAnim = (id: number | undefined) => {
+    if (typeof id !== 'number') return { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+    setNoteAnims(prev => {
+      if (typeof id === 'number' && !prev[id]) {
+        prev[id] = {
+          opacity: new Animated.Value(1),
+          translateY: new Animated.Value(0),
+        };
+      }
+      return { ...prev };
+    });
+    return (typeof id === 'number' && noteAnims[id]) ? noteAnims[id] : { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +40,28 @@ export default function NotesScreen() {
   const [noteContent, setNoteContent] = useState("");
   // Animation state for each note
   const [noteAnims, setNoteAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
+
+  // Helper to ensure anim objects exist for all notes
+  const ensureNoteAnims = (noteList: Note[], newId?: number) => {
+    setNoteAnims(prev => {
+      const newAnims = { ...prev };
+      noteList.forEach(note => {
+        if (typeof note.id === 'number' && !newAnims[note.id]) {
+          newAnims[note.id] = {
+            opacity: new Animated.Value(newId === note.id ? 0 : 1),
+            translateY: new Animated.Value(0),
+          };
+        }
+      });
+      // Remove anims for deleted notes
+      Object.keys(newAnims).forEach(id => {
+        if (!noteList.find(n => n.id === Number(id))) {
+          delete newAnims[Number(id)];
+        }
+      });
+      return newAnims;
+    });
+  };
   // Fade animations removed
   // const fadeAnim = useRef(new Animated.Value(0)).current;
   // const listAnim = useRef(new Animated.Value(0)).current;
@@ -48,7 +84,6 @@ export default function NotesScreen() {
     try {
       setLoading(true);
       const allNotes = await NotesService.getAllNotes();
-      // Sort notes: favorites first, then by updated_at desc
       const sortedNotes = allNotes.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
         if (!a.is_favorite && b.is_favorite) return 1;
@@ -56,36 +91,21 @@ export default function NotesScreen() {
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
-      // Update animation state for each note
-      setNoteAnims(prev => {
-        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = { ...prev };
-        sortedNotes.forEach((note) => {
-          if (typeof note.id === 'number' && !newAnims[note.id]) {
-            newAnims[note.id] = {
-              opacity: new Animated.Value(newId === note.id ? 0 : 1),
-              translateY: new Animated.Value(0),
-            };
-          }
-        });
-        // Remove anims for deleted notes
-        Object.keys(newAnims).forEach(id => {
-          if (!sortedNotes.find(n => n.id === Number(id))) {
-            delete newAnims[Number(id)];
-          }
-        });
-        return newAnims;
-      });
+      ensureNoteAnims(sortedNotes, newId);
       setNotes(sortedNotes);
-      // If a new note was added, fade it in
       if (withAnim && newId) {
         setTimeout(() => {
-          if (noteAnims[newId]) {
-            Animated.timing(noteAnims[newId].opacity, {
-              toValue: 1,
-              duration: 350,
-              useNativeDriver: true,
-            }).start();
-          }
+          setNoteAnims(prev => {
+            if (prev[newId]) {
+              prev[newId].opacity.setValue(0);
+              Animated.timing(prev[newId].opacity, {
+                toValue: 1,
+                duration: 350,
+                useNativeDriver: true,
+              }).start();
+            }
+            return { ...prev };
+          });
         }, 50);
       }
     } catch (error) {
@@ -121,30 +141,92 @@ export default function NotesScreen() {
     return date.toLocaleDateString();
   };
 
-  // Animate slide for all items to new positions, then update data
-  const animateReorder = async (newOrder: Note[]) => {
-    const prevPositions = notes.map((n, idx) => ({ id: n.id, idx }));
-    newOrder.forEach((note, idx) => {
-      if (typeof note.id === 'number') {
-        const prev = prevPositions.find(p => p.id === note.id);
-        if (prev && prev.idx !== idx && noteAnims[note.id]) {
-          noteAnims[note.id].translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
-          Animated.spring(noteAnims[note.id].translateY, {
+  // Animate favorite: fade out at old position, slide others, fade in at new position
+  // Yeni favori animasyonu: fade out, üsttekiler slide down, sonra fade in
+  const animateFavoriteMove = async (oldIdx: number, newIdx: number, noteId: number, newOrder: Note[]) => {
+    // 1. Fade out the note at old position
+    await new Promise(res => {
+      setNoteAnims(prev => {
+        if (prev[noteId]) {
+          Animated.timing(prev[noteId].opacity, {
             toValue: 0,
+            duration: 250,
             useNativeDriver: true,
-          }).start();
+          }).start(() => res(null));
+        } else {
+          res(null);
         }
-      }
+        return { ...prev };
+      });
     });
-    // Wait for animation to finish before updating data
-    await new Promise(res => setTimeout(res, 350));
-    setNotes(newOrder);
+
+    // 2. Slide only the items above oldIdx
+    await new Promise(slideResAll => {
+      setNoteAnims(prev => {
+        const slidePromises: Promise<unknown>[] = [];
+        for (let idx = 0; idx < oldIdx; idx++) {
+          const note = notes[idx];
+          if (note.id !== noteId && typeof note.id === 'number') {
+            if (!prev[note.id]) {
+              prev[note.id] = { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+            }
+            if (typeof note.id === 'number' && prev[note.id]) {
+              const anim = prev[note.id];
+              anim.translateY.setValue(0);
+              slidePromises.push(new Promise(slideRes => {
+                Animated.timing(anim.translateY, {
+                  toValue: CARD_HEIGHT + 15,
+                  duration: 350,
+                  useNativeDriver: true,
+                }).start(() => slideRes(null));
+              }));
+            }
+          }
+        }
+        Promise.all(slidePromises).then(() => slideResAll(null));
+        return { ...prev };
+      });
+    });
+
+    // 3. Update data: move note to top
+    const newNotes = [...notes];
+    const moved = newNotes.splice(oldIdx, 1)[0];
+    newNotes.unshift(moved);
+    setNotes(newNotes);
+
+    // 4. Fade in the note at new position
+    await new Promise(res => {
+      setNoteAnims(prev => {
+        if (prev[noteId]) {
+          prev[noteId].opacity.setValue(0);
+          Animated.timing(prev[noteId].opacity, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+          }).start(() => res(null));
+        } else {
+          res(null);
+        }
+        return { ...prev };
+      });
+    });
+
+    // 5. Reset translateY for all
+    setNoteAnims(prev => {
+      Object.keys(prev).forEach(id => {
+        if (prev[Number(id)]) {
+          prev[Number(id)].translateY.setValue(0);
+        }
+      });
+      return { ...prev };
+    });
   };
 
   const toggleFavorite = async (noteId: number) => {
     try {
+      // Find old and new index for the note
+      const oldIdx = notes.findIndex(n => n.id === noteId);
       await NotesService.toggleFavorite(noteId);
-      // Get new sorted order
       const allNotes = await NotesService.getAllNotes();
       const sortedNotes = allNotes.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -153,46 +235,90 @@ export default function NotesScreen() {
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
-      await animateReorder(sortedNotes);
+      const newIdx = sortedNotes.findIndex(n => n.id === noteId);
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        await animateFavoriteMove(oldIdx, newIdx, noteId, sortedNotes);
+        // Favori animasyonu bittikten sonra state'i güncelle ki, buton güncel olsun
+        setNotes(sortedNotes);
+      } else {
+        setNotes(sortedNotes);
+      }
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
     }
   };
 
+  // Sequential add animation: slide others, then fade in new note
   const handleAddNote = () => {
     setShowNoteModal(true);
   };
 
   const handleSaveNote = async () => {
-    // Skip database operations on web platform
     if (Platform.OS === 'web') {
       Alert.alert("Not supported", "Database operations are not supported on web platform");
       return;
     }
-    
     if (!noteTitle.trim() || !noteContent.trim()) {
       Alert.alert("Error", "Please fill in both title and content");
       return;
     }
-
     try {
-      await NotesService.createNote({
+      const newNoteId = await NotesService.createNote({
         title: noteTitle.trim(),
         content: noteContent.trim(),
       });
-
-      Alert.alert("Success", "Note saved successfully!", [
-        {
-          text: "OK",
-          onPress: () => {
-            setShowNoteModal(false);
-            setNoteTitle("");
-            setNoteContent("");
-            loadNotes(); // Refresh data after saving
-          },
-        },
-      ]);
+      const allNotes = await NotesService.getAllNotes();
+      const sortedNotes = allNotes.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      ensureNoteAnims(sortedNotes, newNoteId);
+      // Slide others
+      const prevPositions = notes.map((n, idx) => ({ id: n.id, idx }));
+      await Promise.all(sortedNotes.map((note, idx) => {
+        if (note.id !== newNoteId && typeof note.id === 'number') {
+          const prev = prevPositions.find(p => p.id === note.id);
+          setNoteAnims(prevAnims => {
+            if (typeof note.id === 'number' && !prevAnims[note.id]) {
+              prevAnims[note.id] = { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+            }
+            return { ...prevAnims };
+          });
+          if (prev && prev.idx !== idx) {
+            const anim = getNoteAnim(note.id);
+            anim.translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
+            return new Promise(res => {
+              Animated.spring(anim.translateY, {
+                toValue: 0,
+                useNativeDriver: true,
+              }).start(() => res(null));
+            });
+          }
+        }
+        return Promise.resolve();
+      }));
+      setNotes(sortedNotes);
+      setShowNoteModal(false);
+      setNoteTitle("");
+      setNoteContent("");
+      setTimeout(() => {
+        setNoteAnims(prev => {
+          if (prev[newNoteId]) {
+            prev[newNoteId].opacity.setValue(0);
+            Animated.timing(prev[newNoteId].opacity, {
+              toValue: 1,
+              duration: 350,
+              useNativeDriver: true,
+            }).start();
+          }
+          return { ...prev };
+        });
+      }, 50);
+      Alert.alert("Success", "Note saved successfully!");
     } catch (error) {
       console.error('Error saving note:', error);
       Alert.alert("Error", "Failed to save note. Please try again.");
@@ -205,7 +331,7 @@ export default function NotesScreen() {
     setNoteContent("");
   };
 
-  // Add delete handler
+  // Sequential delete animation: fade out, slide, fade in rest
   const handleDeleteNote = (noteId: number) => {
     Alert.alert(
       'Delete Note',
@@ -216,17 +342,23 @@ export default function NotesScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            // Fade out animation
+            // 1. Fade out the note
             await new Promise(res => {
-              Animated.timing(noteAnims[noteId]?.opacity || new Animated.Value(1), {
-                toValue: 0,
-                duration: 350,
-                useNativeDriver: true,
-              }).start(() => res(null));
+              setNoteAnims(prev => {
+                if (prev[noteId]) {
+                  Animated.timing(prev[noteId].opacity, {
+                    toValue: 0,
+                    duration: 250,
+                    useNativeDriver: true,
+                  }).start(() => res(null));
+                } else {
+                  res(null);
+                }
+                return { ...prev };
+              });
             });
             try {
               await NotesService.deleteNote(noteId);
-              // Remove from data and animate slide
               const allNotes = await NotesService.getAllNotes();
               const sortedNotes = allNotes.sort((a, b) => {
                 if (a.is_favorite && !b.is_favorite) return -1;
@@ -235,12 +367,41 @@ export default function NotesScreen() {
                 const dateB = new Date(b.updated_at || b.created_at || '').getTime();
                 return dateB - dateA;
               });
-              await animateReorder(sortedNotes);
-              setNoteAnims(prev => {
-                const copy = { ...prev };
-                delete copy[noteId];
-                return copy;
-              });
+              const filteredNotes = sortedNotes.filter(n => n.id !== noteId);
+              ensureNoteAnims(filteredNotes);
+              const prevPositions = notes.map((n, idx) => ({ id: n.id, idx }));
+              // Defensive: check anim exists
+              await Promise.all(filteredNotes.map((note, idx) => {
+                if (typeof note.id === 'number') {
+                  setNoteAnims(prevAnims => {
+                    if (typeof note.id === 'number' && !prevAnims[note.id]) {
+                      prevAnims[note.id] = { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+                    }
+                    return { ...prevAnims };
+                  });
+                  const prev = prevPositions.find(p => p.id === note.id);
+                  if (prev && prev.idx !== idx) {
+                    const anim = getNoteAnim(note.id);
+                    anim.translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
+                    return new Promise(res2 => {
+                      Animated.timing(anim.translateY, {
+                        toValue: 0,
+                        duration: 350,
+                        useNativeDriver: true,
+                      }).start(() => res2(null));
+                    });
+                  }
+                }
+                return Promise.resolve();
+              }));
+              setNotes(filteredNotes);
+              setTimeout(() => {
+                setNoteAnims(prev => {
+                  const copy = { ...prev };
+                  delete copy[noteId];
+                  return copy;
+                });
+              }, 50);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete note');
             }

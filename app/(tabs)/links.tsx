@@ -18,24 +18,74 @@ import { Link, LinksService } from "../../database/linksService";
 const CARD_HEIGHT = 110; // Approximate height of a link card (adjust if needed)
 
 export default function LinksScreen() {
-  // Animate slide for all items to new positions, then update data
-  const animateReorder = async (newOrder: Link[]) => {
-    const prevPositions = links.map((l, idx) => ({ id: l.id, idx }));
-    newOrder.forEach((link, idx) => {
-      if (typeof link.id === 'number') {
-        const prev = prevPositions.find(p => p.id === link.id);
-        if (prev && prev.idx !== idx && linkAnims[link.id]) {
-          linkAnims[link.id].translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
-          Animated.spring(linkAnims[link.id].translateY, {
-            toValue: 0,
+  // Helper: get or create anim object for a link id
+  const getLinkAnim = (id: number | undefined) => {
+    if (typeof id !== 'number') return { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+    setLinkAnims(prev => {
+      if (typeof id === 'number' && !prev[id]) {
+        prev[id] = {
+          opacity: new Animated.Value(1),
+          translateY: new Animated.Value(0),
+        };
+      }
+      return { ...prev };
+    });
+    return (typeof id === 'number' && linkAnims[id]) ? linkAnims[id] : { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+  };
+  // Animate favorite: fade out at old position, slide others, fade in at new position
+  // Yeni favori animasyonu: fade out, üsttekiler slide down, sonra fade in
+  const animateFavoriteMove = async (oldIdx: number, newIdx: number, linkId: number, newOrder: Link[]) => {
+    // 1. Fade out the link at old position
+    await new Promise(res => {
+      Animated.timing(linkAnims[linkId]?.opacity || new Animated.Value(1), {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => res(null));
+    });
+
+    // 2. Slide only the items above oldIdx (üstündekiler 1 satır aşağı)
+    const slidePromises: Promise<unknown>[] = [];
+    for (let idx = 0; idx < oldIdx; idx++) {
+      const link = links[idx];
+      if (link.id !== linkId && typeof link.id === 'number') {
+        const anim = getLinkAnim(link.id);
+        anim.translateY.setValue(0);
+        slidePromises.push(new Promise(slideRes => {
+          Animated.timing(anim.translateY, {
+            toValue: CARD_HEIGHT + 15,
+            duration: 350,
             useNativeDriver: true,
-          }).start();
-        }
+          }).start(() => slideRes(null));
+        }));
+      }
+    }
+    await Promise.all(slidePromises);
+
+    // 3. Update data: move link to top (en üste getir) -- sadece animasyonlar bittikten sonra
+    const newLinks = [...links];
+    const moved = newLinks.splice(oldIdx, 1)[0];
+    newLinks.unshift(moved);
+    setLinks(newLinks);
+
+    // 4. Fade in the link at new position (en üstte)
+    if (linkAnims[linkId]) {
+      linkAnims[linkId].opacity.setValue(0);
+      await new Promise(res => {
+        Animated.timing(linkAnims[linkId].opacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }).start(() => res(null));
+      });
+    }
+
+    // 5. Reset translateY for all (animasyon sonrası pozisyonu düzelt)
+    Object.keys(linkAnims).forEach(id => {
+      if (linkAnims[Number(id)]) {
+        linkAnims[Number(id)].translateY.setValue(0);
       }
     });
-    // Wait for animation to finish before updating data
-    await new Promise(res => setTimeout(res, 350));
-    setLinks(newOrder);
   };
   const [searchQuery, setSearchQuery] = useState("");
   const [links, setLinks] = useState<Link[]>([]);
@@ -183,8 +233,9 @@ export default function LinksScreen() {
 
   async function toggleFavorite(linkId: number) {
     try {
+      // Find old and new index for the link
+      const oldIdx = links.findIndex(l => l.id === linkId);
       await LinksService.toggleFavorite(linkId);
-      // Get new sorted order
       const allLinks = await LinksService.getAllLinks();
       const sortedLinks = allLinks.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -193,48 +244,84 @@ export default function LinksScreen() {
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
-      await animateReorder(sortedLinks);
+      const newIdx = sortedLinks.findIndex(l => l.id === linkId);
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        await animateFavoriteMove(oldIdx, newIdx, linkId, sortedLinks);
+        // Favori animasyonu bittikten sonra state'i güncelle ki, buton güncel olsun
+        setLinks(sortedLinks);
+      } else {
+        setLinks(sortedLinks);
+      }
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
     }
   }
 
+  // Sequential add animation: slide others, then fade in new link
   const handleAddLink = () => {
     setShowLinkModal(true);
   };
 
   const handleSaveLink = async () => {
-    // Skip database operations on web platform
     if (Platform.OS === 'web') {
       Alert.alert("Not supported", "Database operations are not supported on web platform");
       return;
     }
-    
     if (!linkTitle.trim() || !linkUrl.trim()) {
       Alert.alert("Error", "Please fill in both title and URL");
       return;
     }
-
     try {
-      await LinksService.createLink({
+      const newLinkId = await LinksService.createLink({
         title: linkTitle.trim(),
         url: linkUrl.trim(),
         description: linkDescription.trim() || undefined,
       });
-
-      Alert.alert("Success", "Link saved successfully!", [
-        {
-          text: "OK",
-          onPress: () => {
-            setShowLinkModal(false);
-            setLinkTitle("");
-            setLinkUrl("");
-            setLinkDescription("");
-            loadLinks(); // Refresh data after saving
-          },
-        },
-      ]);
+      // Get new sorted links
+      const allLinks = await LinksService.getAllLinks();
+      const sortedLinks = allLinks.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      // 1. Slide others to new positions (before adding new link)
+      const prevPositions = links.map((l, idx) => ({ id: l.id, idx }));
+      await Promise.all(sortedLinks.map((link, idx) => {
+        if (link.id !== newLinkId && typeof link.id === 'number') {
+          const prev = prevPositions.find(p => p.id === link.id);
+          const anim = getLinkAnim(link.id);
+          if (prev && prev.idx !== idx) {
+            anim.translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
+            return new Promise(res => {
+              Animated.spring(anim.translateY, {
+                toValue: 0,
+                useNativeDriver: true,
+              }).start(() => res(null));
+            });
+          }
+        }
+        return Promise.resolve();
+      }));
+      setLinks(sortedLinks);
+      setShowLinkModal(false);
+      setLinkTitle("");
+      setLinkUrl("");
+      setLinkDescription("");
+      // 2. Fade in the new link
+      setTimeout(() => {
+        if (linkAnims[newLinkId]) {
+          linkAnims[newLinkId].opacity.setValue(0);
+          Animated.timing(linkAnims[newLinkId].opacity, {
+            toValue: 1,
+            duration: 350,
+            useNativeDriver: true,
+          }).start();
+        }
+      }, 50);
+      Alert.alert("Success", "Link saved successfully!");
     } catch (error) {
       console.error('Error saving link:', error);
       Alert.alert("Error", "Failed to save link. Please try again.");
@@ -248,7 +335,7 @@ export default function LinksScreen() {
     setLinkDescription("");
   };
 
-  // Add delete handler
+  // Sequential delete animation: fade out, slide, fade in rest
   const handleDeleteLink = (linkId: number) => {
     Alert.alert(
       'Delete Link',
@@ -259,17 +346,17 @@ export default function LinksScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            // Fade out animation
+            // 1. Fade out the link
             await new Promise(res => {
               Animated.timing(linkAnims[linkId]?.opacity || new Animated.Value(1), {
                 toValue: 0,
-                duration: 350,
+                duration: 250,
                 useNativeDriver: true,
               }).start(() => res(null));
             });
             try {
               await LinksService.deleteLink(linkId);
-              // Remove from data and animate slide
+              // 2. Slide others to new positions (after fade out)
               const allLinks = await LinksService.getAllLinks();
               const sortedLinks = allLinks.sort((a, b) => {
                 if (a.is_favorite && !b.is_favorite) return -1;
@@ -278,12 +365,35 @@ export default function LinksScreen() {
                 const dateB = new Date(b.updated_at || b.created_at || '').getTime();
                 return dateB - dateA;
               });
-              await animateReorder(sortedLinks);
-              setLinkAnims(prev => {
-                const copy = { ...prev };
-                delete copy[linkId];
-                return copy;
+              const filteredLinks = sortedLinks.filter(l => l.id !== linkId);
+              const prevPositions = links.map((l, idx) => ({ id: l.id, idx }));
+              const slidePromises: Promise<unknown>[] = [];
+              filteredLinks.forEach((link, idx) => {
+                if (typeof link.id === 'number') {
+                  const prev = prevPositions.find(p => p.id === link.id);
+                  const anim = getLinkAnim(link.id);
+                  if (prev && prev.idx !== idx) {
+                    anim.translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
+                    slidePromises.push(new Promise(slideRes => {
+                      Animated.timing(anim.translateY, {
+                        toValue: 0,
+                        duration: 350,
+                        useNativeDriver: true,
+                      }).start(() => slideRes(null));
+                    }));
+                  }
+                }
               });
+              await Promise.all(slidePromises);
+              // 3. Remove the link from the list
+              setLinks(filteredLinks);
+              setTimeout(() => {
+                setLinkAnims(prev => {
+                  const copy = { ...prev };
+                  delete copy[linkId];
+                  return copy;
+                });
+              }, 50);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete link');
             }

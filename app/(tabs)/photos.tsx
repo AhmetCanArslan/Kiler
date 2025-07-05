@@ -74,11 +74,26 @@ function PhotosScreen() {
         });
         return newAnims;
       });
-      setPhotos(sortedPhotos);
-      // If a new photo was added, fade it in
+      // If a new photo was added, fade it in (fade in at new position, slide others)
       if (withAnim && newId) {
+        // 1. Find where the new photo will be inserted
+        const prevPositions = photos.map((p, idx) => ({ id: p.id, idx }));
+        sortedPhotos.forEach((photo, idx) => {
+          if (photo.id !== newId && typeof photo.id === 'number') {
+            const prev = prevPositions.find(p => p.id === photo.id);
+            if (prev && prev.idx !== idx && photoAnims[photo.id]) {
+              photoAnims[photo.id].translateY.setValue((prev.idx - idx) * (imageSize + 20));
+              Animated.spring(photoAnims[photo.id].translateY, {
+                toValue: 0,
+                useNativeDriver: true,
+              }).start();
+            }
+          }
+        });
+        setPhotos(sortedPhotos);
         setTimeout(() => {
           if (photoAnims[newId]) {
+            photoAnims[newId].opacity.setValue(0);
             Animated.timing(photoAnims[newId].opacity, {
               toValue: 1,
               duration: 350,
@@ -86,6 +101,8 @@ function PhotosScreen() {
             }).start();
           }
         }, 50);
+      } else {
+        setPhotos(sortedPhotos);
       }
     } catch (error) {
       console.error('Error loading photos:', error);
@@ -121,29 +138,67 @@ function PhotosScreen() {
   };
 
   // Animate slide for all items to new positions, then update data
-  const animateReorder = async (newOrder: Photo[]) => {
-    const prevPositions = photos.map((p, idx) => ({ id: p.id, idx }));
-    newOrder.forEach((photo, idx) => {
-      if (typeof photo.id === 'number') {
-        const prev = prevPositions.find(p => p.id === photo.id);
-        if (prev && prev.idx !== idx && photoAnims[photo.id]) {
-          photoAnims[photo.id].translateY.setValue((prev.idx - idx) * (imageSize + 20));
-          Animated.spring(photoAnims[photo.id].translateY, {
-            toValue: 0,
+  // Animate favorite: fade out at old position, slide others, fade in at new position
+  // Yeni favori animasyonu: fade out, üsttekiler slide down, sonra fade in
+  const animateFavoriteMove = async (oldIdx: number, newIdx: number, photoId: number, newOrder: Photo[]) => {
+    // 1. Fade out the photo at old position
+    await new Promise(res => {
+      Animated.timing(photoAnims[photoId]?.opacity || new Animated.Value(1), {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => res(null));
+    });
+
+    // 2. Slide only the items above oldIdx (üstündekiler 1 satır aşağı)
+    const slidePromises = [];
+    for (let idx = 0; idx < oldIdx; idx++) {
+      const photo = photos[idx];
+      const id = photo?.id;
+      if (typeof id === 'number' && id !== photoId && photoAnims[id]) {
+        photoAnims[id].translateY.setValue(0);
+        slidePromises.push(new Promise(slideRes => {
+          Animated.timing(photoAnims[id].translateY, {
+            toValue: imageSize + 20,
+            duration: 350,
             useNativeDriver: true,
-          }).start();
-        }
+          }).start(() => slideRes(null));
+        }));
+      }
+    }
+    await Promise.all(slidePromises);
+
+    // 3. Update data: move photo to top (en üste getir) -- sadece animasyonlar bittikten sonra
+    const newPhotos = [...photos];
+    const moved = newPhotos.splice(oldIdx, 1)[0];
+    newPhotos.unshift(moved);
+    setPhotos(newPhotos);
+
+    // 4. Fade in the photo at new position (en üstte)
+    if (photoAnims[photoId]) {
+      photoAnims[photoId].opacity.setValue(0);
+      await new Promise(res => {
+        Animated.timing(photoAnims[photoId].opacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }).start(() => res(null));
+      });
+    }
+
+    // 5. Reset translateY for all (animasyon sonrası pozisyonu düzelt)
+    Object.keys(photoAnims).forEach(id => {
+      if (photoAnims[Number(id)]) {
+        photoAnims[Number(id)].translateY.setValue(0);
       }
     });
-    // Wait for animation to finish before updating data
-    await new Promise(res => setTimeout(res, 350));
-    setPhotos(newOrder);
   };
 
   const toggleFavorite = async (photoId: number) => {
     try {
+      // Find old and new index for the photo
+      const oldIdx = photos.findIndex(p => p.id === photoId);
       await PhotosService.toggleFavorite(photoId);
-      // Get new sorted order
       const allPhotos = await PhotosService.getAllPhotos();
       const sortedPhotos = allPhotos.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -152,7 +207,14 @@ function PhotosScreen() {
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
-      await animateReorder(sortedPhotos);
+      const newIdx = sortedPhotos.findIndex(p => p.id === photoId);
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        await animateFavoriteMove(oldIdx, newIdx, photoId, sortedPhotos);
+        // Favori animasyonu bittikten sonra state'i güncelle ki, buton güncel olsun
+        setPhotos(sortedPhotos);
+      } else {
+        setPhotos(sortedPhotos);
+      }
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
@@ -170,17 +232,17 @@ function PhotosScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            // Fade out animation
+            // 1. Fade out the photo
             await new Promise(res => {
               Animated.timing(photoAnims[photoId]?.opacity || new Animated.Value(1), {
                 toValue: 0,
-                duration: 350,
+                duration: 250,
                 useNativeDriver: true,
               }).start(() => res(null));
             });
             try {
               await PhotosService.deletePhoto(photoId);
-              // Remove from data and animate slide
+              // 2. Slide others to new positions (after fade out)
               const allPhotos = await PhotosService.getAllPhotos();
               const sortedPhotos = allPhotos.sort((a, b) => {
                 if (a.is_favorite && !b.is_favorite) return -1;
@@ -189,12 +251,35 @@ function PhotosScreen() {
                 const dateB = new Date(b.updated_at || b.created_at || '').getTime();
                 return dateB - dateA;
               });
-              await animateReorder(sortedPhotos);
-              setPhotoAnims(prev => {
-                const copy = { ...prev };
-                delete copy[photoId];
-                return copy;
+              const filteredPhotos = sortedPhotos.filter(p => p.id !== photoId);
+              const prevPositions = photos.map((p, idx) => ({ id: p.id, idx }));
+              const slidePromises: Promise<unknown>[] = [];
+              filteredPhotos.forEach((photo, idx) => {
+                const id = photo?.id;
+                if (typeof id === 'number') {
+                  const prev = prevPositions.find(p => p.id === id);
+                  if (prev && prev.idx !== idx && photoAnims[id]) {
+                    photoAnims[id].translateY.setValue((prev.idx - idx) * (imageSize + 20));
+                    slidePromises.push(new Promise(slideRes => {
+                      Animated.timing(photoAnims[id].translateY, {
+                        toValue: 0,
+                        duration: 350,
+                        useNativeDriver: true,
+                      }).start(() => slideRes(null));
+                    }));
+                  }
+                }
               });
+              await Promise.all(slidePromises);
+              // 3. Remove the photo from the list
+              setPhotos(filteredPhotos);
+              setTimeout(() => {
+                setPhotoAnims(prev => {
+                  const copy = { ...prev };
+                  delete copy[photoId];
+                  return copy;
+                });
+              }, 50);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete photo');
             }
