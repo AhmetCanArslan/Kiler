@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -41,6 +42,10 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkDescription, setLinkDescription] = useState("");
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [stats, setStats] = useState<DatabaseStats>({
     notes_count: 0,
@@ -180,6 +185,123 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     setNoteContent("");
   };
 
+  // Take photo function
+  const handleTakePhoto = async () => {
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Camera permission is needed to take photos.');
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        await savePhoto(asset);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  // Save photo to database
+  const savePhoto = async (asset: ImagePicker.ImagePickerAsset) => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Photo saving is not supported on web platform");
+      return;
+    }
+
+    try {
+      // Generate a title from the filename or use a default
+      const filename = asset.uri.split('/').pop() || 'untitled.jpg';
+      const title = filename.replace(/\.[^/.]+$/, ""); // Remove extension
+
+      await PhotosService.createPhoto({
+        title: title,
+        description: `Photo taken on ${new Date().toLocaleDateString()}`,
+        file_path: asset.uri,
+        original_name: filename,
+        file_size: asset.fileSize,
+        width: asset.width,
+        height: asset.height,
+        mime_type: asset.mimeType,
+        tags: ['photo', 'captured'],
+        taken_at: new Date().toISOString(),
+      });
+
+      Alert.alert('Success', 'Photo saved successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            loadData(); // Refresh data after saving
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Error saving photo:', error);
+      Alert.alert('Error', 'Failed to save photo');
+    }
+  };
+
+  // Handle add link
+  const handleAddLink = () => {
+    setShowLinkModal(true);
+  };
+
+  // Handle save link
+  const handleSaveLink = async () => {
+    // Skip database operations on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert("Not supported", "Database operations are not supported on web platform");
+      return;
+    }
+    
+    if (!linkTitle.trim() || !linkUrl.trim()) {
+      Alert.alert("Error", "Please fill in both title and URL");
+      return;
+    }
+
+    try {
+      await LinksService.createLink({
+        title: linkTitle.trim(),
+        url: linkUrl.trim(),
+        description: linkDescription.trim(),
+      });
+
+      Alert.alert("Success", "Link saved successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            setShowLinkModal(false);
+            setLinkTitle("");
+            setLinkUrl("");
+            setLinkDescription("");
+            loadData(); // Refresh data after saving
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Error saving link:', error);
+      Alert.alert("Error", "Failed to save link. Please try again.");
+    }
+  };
+
+  const handleCloseLinkModal = () => {
+    setShowLinkModal(false);
+    setLinkTitle("");
+    setLinkUrl("");
+    setLinkDescription("");
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {settingsButton}
@@ -259,11 +381,11 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
               <Ionicons name="add-circle" size={24} color="#fff" />
               <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Add Note</Text>
               </TouchableOpacity>
-              <TouchableOpacity key="take-photo" style={[styles.actionCard, { width: "22%", backgroundColor: "#F6AD55", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]}>
+              <TouchableOpacity key="take-photo" style={[styles.actionCard, { width: "22%", backgroundColor: "#F6AD55", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]} onPress={handleTakePhoto}>
               <Ionicons name="camera" size={24} color="#fff" />
               <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Take Photo</Text>
               </TouchableOpacity>
-              <TouchableOpacity key="add-link" style={[styles.actionCard, { width: "22%", backgroundColor: "#63B3ED", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]}>
+              <TouchableOpacity key="add-link" style={[styles.actionCard, { width: "22%", backgroundColor: "#63B3ED", alignItems: "center", justifyContent: "center", paddingVertical: 12, paddingHorizontal: 0 }]} onPress={handleAddLink}>
               <Ionicons name="link" size={24} color="#fff" />
               <Text style={[styles.actionText, { color: "#fff", textAlign: "center", fontSize: 12 }]}>Add Link</Text>
               </TouchableOpacity>
@@ -314,6 +436,58 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
           </TouchableOpacity>
           <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveNote}>
             <Text style={styles.saveButtonText}>Save Note</Text>
+          </TouchableOpacity>
+        </View>
+      </CommonModal>
+
+      {/* Add Link Modal */}
+      <CommonModal
+        visible={showLinkModal}
+        onClose={handleCloseLinkModal}
+      >
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Add Link</Text>
+          <TouchableOpacity onPress={handleCloseLinkModal} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#8E9BA2" />
+          </TouchableOpacity>
+        </View>
+
+        <TextInput
+          style={styles.titleInput}
+          placeholder="Link title..."
+          placeholderTextColor="#8E9BA2"
+          value={linkTitle}
+          onChangeText={setLinkTitle}
+          autoFocus={true}
+        />
+
+        <TextInput
+          style={styles.titleInput}
+          placeholder="URL..."
+          placeholderTextColor="#8E9BA2"
+          value={linkUrl}
+          onChangeText={setLinkUrl}
+          autoCapitalize="none"
+          keyboardType="url"
+        />
+
+        <TextInput
+          style={styles.contentInput}
+          placeholder="Description (optional)..."
+          placeholderTextColor="#8E9BA2"
+          value={linkDescription}
+          onChangeText={setLinkDescription}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={[styles.cancelButton, { flex: 0.4 }]} onPress={handleCloseLinkModal}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { flex: 0.55 }]} onPress={handleSaveLink}>
+            <Text style={styles.saveButtonText}>Save Link</Text>
           </TouchableOpacity>
         </View>
       </CommonModal>
