@@ -1,18 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Note, NotesService } from "../../database/notesService";
+
+const CARD_HEIGHT = 120; // Approximate height of a note card (adjust if needed)
 
 export default function NotesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,6 +24,8 @@ export default function NotesScreen() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  // Animation state for each note
+  const [noteAnims, setNoteAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
   // Fade animations removed
   // const fadeAnim = useRef(new Animated.Value(0)).current;
   // const listAnim = useRef(new Animated.Value(0)).current;
@@ -39,24 +44,50 @@ export default function NotesScreen() {
   // Fade in animation only on focus (tab switch)
   // Fade animation on focus removed
 
-  const loadNotes = async () => {
+  const loadNotes = async (withAnim = false, newId?: number) => {
     try {
       setLoading(true);
-      
       const allNotes = await NotesService.getAllNotes();
       // Sort notes: favorites first, then by updated_at desc
       const sortedNotes = allNotes.sort((a, b) => {
-        // First sort by favorite status (favorites first)
         if (a.is_favorite && !b.is_favorite) return -1;
         if (!a.is_favorite && b.is_favorite) return 1;
-        // Then sort by updated_at (most recent first)
         const dateA = new Date(a.updated_at || a.created_at || '').getTime();
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
+      // Update animation state for each note
+      setNoteAnims(prev => {
+        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = { ...prev };
+        sortedNotes.forEach((note) => {
+          if (typeof note.id === 'number' && !newAnims[note.id]) {
+            newAnims[note.id] = {
+              opacity: new Animated.Value(newId === note.id ? 0 : 1),
+              translateY: new Animated.Value(0),
+            };
+          }
+        });
+        // Remove anims for deleted notes
+        Object.keys(newAnims).forEach(id => {
+          if (!sortedNotes.find(n => n.id === Number(id))) {
+            delete newAnims[Number(id)];
+          }
+        });
+        return newAnims;
+      });
       setNotes(sortedNotes);
-      
-      // Animation removed
+      // If a new note was added, fade it in
+      if (withAnim && newId) {
+        setTimeout(() => {
+          if (noteAnims[newId]) {
+            Animated.timing(noteAnims[newId].opacity, {
+              toValue: 1,
+              duration: 350,
+              useNativeDriver: true,
+            }).start();
+          }
+        }, 50);
+      }
     } catch (error) {
       console.error('Error loading notes:', error);
       Alert.alert('Error', 'Failed to load notes');
@@ -90,15 +121,53 @@ export default function NotesScreen() {
     return date.toLocaleDateString();
   };
 
+  const animateListChange = async (deletedId?: number) => {
+    // Save previous positions
+    const prevPositions = notes.map((n, idx) => ({ id: n.id, idx }));
+    // Load new notes and update state
+    let newNotes: Note[] = [];
+    try {
+      setLoading(true);
+      const allNotes = await NotesService.getAllNotes();
+      newNotes = allNotes.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      setNotes(newNotes);
+    } finally {
+      setLoading(false);
+    }
+    setTimeout(() => {
+      newNotes.forEach((note, idx) => {
+        if (typeof note.id === 'number') {
+          const prev = prevPositions.find(p => p.id === note.id);
+          if (prev && prev.idx !== idx && noteAnims[note.id]) {
+            noteAnims[note.id].translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
+            Animated.spring(noteAnims[note.id].translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+            }).start();
+          }
+        }
+      });
+      // Remove anim for deleted item
+      if (deletedId) {
+        setNoteAnims(prev => {
+          const copy = { ...prev };
+          delete copy[deletedId];
+          return copy;
+        });
+      }
+    }, 50);
+  };
+
   const toggleFavorite = async (noteId: number) => {
     try {
       await NotesService.toggleFavorite(noteId);
-      // Refresh the notes to show updated favorite status
-      if (searchQuery.trim()) {
-        searchNotes();
-      } else {
-        loadNotes();
-      }
+      await animateListChange();
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
@@ -161,12 +230,19 @@ export default function NotesScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await NotesService.deleteNote(noteId);
-              setNotes((prev) => prev.filter((n) => n.id !== noteId));
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete note');
-            }
+            // Fade out animation
+            Animated.timing(noteAnims[noteId]?.opacity || new Animated.Value(1), {
+              toValue: 0,
+              duration: 350,
+              useNativeDriver: true,
+            }).start(async () => {
+              try {
+                await NotesService.deleteNote(noteId);
+                await animateListChange(noteId);
+              } catch (error) {
+                Alert.alert('Error', 'Failed to delete note');
+              }
+            });
           },
         },
       ]
@@ -208,58 +284,67 @@ export default function NotesScreen() {
           ) : (
             <View>
               {notes.map((note) => (
-                <View
+                <Animated.View
                   key={note.id}
+                  style={{
+                    opacity: typeof note.id === 'number' && noteAnims[note.id]?.opacity !== undefined ? noteAnims[note.id].opacity : 1,
+                    transform: [
+                      {
+                        translateY:
+                          typeof note.id === 'number' && noteAnims[note.id]?.translateY !== undefined
+                            ? noteAnims[note.id].translateY
+                            : 0,
+                      },
+                    ],
+                  }}
                 >
                   <TouchableOpacity style={styles.noteCard}>
-                <View style={styles.noteHeader}>
-                  <View style={styles.noteIcon}>
-                    <Ionicons name="document-text" size={20} color="#fff" style={{ textShadowColor: '#22543D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
-                  </View>
-                  <View style={styles.noteInfo}>
-                    <Text style={styles.noteTitle}>{note.title}</Text>
-                    <Text style={styles.noteStats}>
-                      {note.word_count || 0} words • {formatDate(note.updated_at || note.created_at || "")}
+                    <View style={styles.noteHeader}>
+                      <View style={styles.noteIcon}>
+                        <Ionicons name="document-text" size={20} color="#fff" style={{ textShadowColor: '#22543D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
+                      </View>
+                      <View style={styles.noteInfo}>
+                        <Text style={styles.noteTitle}>{note.title}</Text>
+                        <Text style={styles.noteStats}>
+                          {note.word_count || 0} words • {formatDate(note.updated_at || note.created_at || "")}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'center' }}>
+                        <TouchableOpacity 
+                          style={styles.favoriteButton}
+                          onPress={() => toggleFavorite(note.id!)}
+                        >
+                          <Ionicons 
+                            name={note.is_favorite ? "heart" : "heart-outline"} 
+                            size={18} 
+                            color={note.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteNote(note.id!)}
+                        >
+                          <Ionicons name="trash" size={18} color="#FF6B6B" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <Text style={styles.noteContent} numberOfLines={3}>
+                      {note.content}
                     </Text>
-                  </View>
-                  <View style={{ alignItems: 'center' }}>
-                    <TouchableOpacity 
-                      style={styles.favoriteButton}
-                      onPress={() => toggleFavorite(note.id!)}
-                    >
-                      <Ionicons 
-                        name={note.is_favorite ? "heart" : "heart-outline"} 
-                        size={18} 
-                        color={note.is_favorite ? "#FF6B6B" : "#8E9BA2"} 
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteNote(note.id!)}
-                    >
-                      <Ionicons name="trash" size={18} color="#FF6B6B" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                
-                <Text style={styles.noteContent} numberOfLines={3}>
-                  {note.content}
-                </Text>
-                
-                <View style={styles.noteFooter}>
-                  <View style={styles.tags}>
-                    {(note.tags || []).map((tag, index) => (
-                      <Text key={index} style={styles.tag}>
-                        #{tag}
+                    <View style={styles.noteFooter}>
+                      <View style={styles.tags}>
+                        {(note.tags || []).map((tag, index) => (
+                          <Text key={index} style={styles.tag}>
+                            #{tag}
+                          </Text>
+                        ))}
+                      </View>
+                      <Text style={styles.noteCreatedAt}>
+                        {formatDate(note.created_at || "")}
                       </Text>
-                    ))}
-                  </View>
-                  <Text style={styles.noteCreatedAt}>
-                    {formatDate(note.created_at || "")}
-                  </Text>
-                </View>
+                    </View>
                   </TouchableOpacity>
-                </View>
+                </Animated.View>
               ))}
             </View>
           )}
@@ -311,6 +396,7 @@ export default function NotesScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

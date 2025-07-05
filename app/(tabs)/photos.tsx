@@ -1,26 +1,32 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Dimensions,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+
 import { Photo, PhotosService } from "../../database/photosService";
+
+
 
 const { width } = Dimensions.get("window");
 const imageSize = (width - 75) / 2;
 
-export default function PhotosScreen() {
+function PhotosScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
+  // Animation state for each photo
+  const [photoAnims, setPhotoAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
+  const containerRef = useRef<View>(null);
   // Fade animations removed
   // const listAnim = useRef(new Animated.Value(0)).current;
   // const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -38,24 +44,49 @@ export default function PhotosScreen() {
   // Fade animation on focus removed
 
 
-  const loadPhotos = async () => {
+  const loadPhotos = async (withAnim = false, newId?: number) => {
     try {
       setLoading(true);
-      
       const allPhotos = await PhotosService.getAllPhotos();
-      // Sort photos: favorites first, then by updated_at desc
       const sortedPhotos = allPhotos.sort((a, b) => {
-        // First sort by favorite status (favorites first)
         if (a.is_favorite && !b.is_favorite) return -1;
         if (!a.is_favorite && b.is_favorite) return 1;
-        // Then sort by updated_at (most recent first)
         const dateA = new Date(a.updated_at || a.created_at || '').getTime();
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
+      // Animasyon state'lerini güncelle
+      setPhotoAnims(prev => {
+        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = { ...prev };
+        sortedPhotos.forEach((photo) => {
+          if (typeof photo.id === 'number' && !newAnims[photo.id]) {
+            newAnims[photo.id] = {
+              opacity: new Animated.Value(newId === photo.id ? 0 : 1),
+              translateY: new Animated.Value(0),
+            };
+          }
+        });
+        // Remove anims for deleted photos
+        Object.keys(newAnims).forEach(id => {
+          if (!sortedPhotos.find(p => p.id === Number(id))) {
+            delete newAnims[Number(id)];
+          }
+        });
+        return newAnims;
+      });
       setPhotos(sortedPhotos);
-      
-      // Animation removed
+      // If a new photo was added, fade it in
+      if (withAnim && newId) {
+        setTimeout(() => {
+          if (photoAnims[newId]) {
+            Animated.timing(photoAnims[newId].opacity, {
+              toValue: 1,
+              duration: 350,
+              useNativeDriver: true,
+            }).start();
+          }
+        }, 50);
+      }
     } catch (error) {
       console.error('Error loading photos:', error);
       Alert.alert('Error', 'Failed to load photos');
@@ -92,12 +123,8 @@ export default function PhotosScreen() {
   const toggleFavorite = async (photoId: number) => {
     try {
       await PhotosService.toggleFavorite(photoId);
-      // Refresh the photos to show updated favorite status
-      if (searchQuery.trim()) {
-        searchPhotos();
-      } else {
-        loadPhotos();
-      }
+      // Sıralama değişirse animasyon başlat
+      await animateListChange();
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
@@ -115,16 +142,67 @@ export default function PhotosScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await PhotosService.deletePhoto(photoId);
-              setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete photo');
-            }
+            // Fade out animasyonu
+            Animated.timing(photoAnims[photoId]?.opacity || new Animated.Value(1), {
+              toValue: 0,
+              duration: 350,
+              useNativeDriver: true,
+            }).start(async () => {
+              try {
+                await PhotosService.deletePhoto(photoId);
+                await animateListChange(photoId);
+              } catch (error) {
+                Alert.alert('Error', 'Failed to delete photo');
+              }
+            });
           },
         },
       ]
     );
+  };
+
+  // Liste sıralaması değiştiğinde slide animasyonu uygula
+  const animateListChange = async (deletedId?: number) => {
+    // Save previous positions
+    const prevPositions = photos.map((p, idx) => ({ id: p.id, idx }));
+    // Load new photos and update state
+    let newPhotos: Photo[] = [];
+    try {
+      setLoading(true);
+      const allPhotos = await PhotosService.getAllPhotos();
+      newPhotos = allPhotos.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      setPhotos(newPhotos);
+    } finally {
+      setLoading(false);
+    }
+    setTimeout(() => {
+      newPhotos.forEach((photo, idx) => {
+        if (typeof photo.id === 'number') {
+          const prev = prevPositions.find(p => p.id === photo.id);
+          if (prev && prev.idx !== idx && photoAnims[photo.id]) {
+            photoAnims[photo.id].translateY.setValue((prev.idx - idx) * (imageSize + 20));
+            Animated.spring(photoAnims[photo.id].translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+            }).start();
+          }
+        }
+      });
+      // Remove anim for deleted item
+      if (deletedId) {
+        setPhotoAnims(prev => {
+          const copy = { ...prev };
+          delete copy[deletedId];
+          return copy;
+        });
+      }
+    }, 50);
   };
 
   return (
@@ -163,7 +241,17 @@ export default function PhotosScreen() {
               {photos.map((photo) => (
                 <Animated.View
                   key={photo.id}
-                  // Fade animation removed
+              style={{
+                opacity: typeof photo.id === 'number' && photoAnims[photo.id]?.opacity !== undefined ? photoAnims[photo.id].opacity : 1,
+                transform: [
+                  {
+                    translateY:
+                      typeof photo.id === 'number' && photoAnims[photo.id]?.translateY !== undefined
+                        ? photoAnims[photo.id].translateY
+                        : 0,
+                  },
+                ],
+              }}
                 >
                   <TouchableOpacity style={styles.photoCard}>
                     <View style={styles.photoPlaceholder}>
@@ -222,6 +310,8 @@ export default function PhotosScreen() {
     </SafeAreaView>
   );
 }
+
+export default PhotosScreen;
 
 const styles = StyleSheet.create({
   container: {

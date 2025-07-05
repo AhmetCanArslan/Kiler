@@ -1,18 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Link, LinksService } from "../../database/linksService";
+
+const CARD_HEIGHT = 110; // Approximate height of a link card (adjust if needed)
 
 export default function LinksScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -22,6 +25,8 @@ export default function LinksScreen() {
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkDescription, setLinkDescription] = useState("");
+  // Animation state for each link
+  const [linkAnims, setLinkAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value } }>({});
   // Fade animations removed
   // const listAnim = useRef(new Animated.Value(0)).current;
   // const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -39,10 +44,9 @@ export default function LinksScreen() {
   // Fade in animation only on focus (tab switch)
   // Fade animation on focus removed
 
-  async function loadLinks() {
+  async function loadLinks(withAnim = false, newId?: number) {
     try {
       setLoading(true);
-      
       const allLinks = await LinksService.getAllLinks();
       const sortedLinks = allLinks.sort((a, b) => {
         if (a.is_favorite && !b.is_favorite) return -1;
@@ -51,9 +55,38 @@ export default function LinksScreen() {
         const dateB = new Date(b.updated_at || b.created_at || '').getTime();
         return dateB - dateA;
       });
+      // Update animation state for each link
+      setLinkAnims(prev => {
+        const newAnims: { [id: number]: { opacity: Animated.Value, translateY: Animated.Value } } = { ...prev };
+        sortedLinks.forEach((link) => {
+          if (typeof link.id === 'number' && !newAnims[link.id]) {
+            newAnims[link.id] = {
+              opacity: new Animated.Value(newId === link.id ? 0 : 1),
+              translateY: new Animated.Value(0),
+            };
+          }
+        });
+        // Remove anims for deleted links
+        Object.keys(newAnims).forEach(id => {
+          if (!sortedLinks.find(l => l.id === Number(id))) {
+            delete newAnims[Number(id)];
+          }
+        });
+        return newAnims;
+      });
       setLinks(sortedLinks);
-      
-      // Animation removed
+      // If a new link was added, fade it in
+      if (withAnim && newId) {
+        setTimeout(() => {
+          if (linkAnims[newId]) {
+            Animated.timing(linkAnims[newId].opacity, {
+              toValue: 1,
+              duration: 350,
+              useNativeDriver: true,
+            }).start();
+          }
+        }, 50);
+      }
     } catch (error) {
       console.error('Error loading links:', error);
       Alert.alert('Error', 'Failed to load links');
@@ -86,14 +119,53 @@ export default function LinksScreen() {
     return date.toLocaleDateString();
   }
 
+  const animateListChange = async (deletedId?: number) => {
+    // Save previous positions
+    const prevPositions = links.map((l, idx) => ({ id: l.id, idx }));
+    // Load new links and update state
+    let newLinks: Link[] = [];
+    try {
+      setLoading(true);
+      const allLinks = await LinksService.getAllLinks();
+      newLinks = allLinks.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
+        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
+        return dateB - dateA;
+      });
+      setLinks(newLinks);
+    } finally {
+      setLoading(false);
+    }
+    setTimeout(() => {
+      newLinks.forEach((link, idx) => {
+        if (typeof link.id === 'number') {
+          const prev = prevPositions.find(p => p.id === link.id);
+          if (prev && prev.idx !== idx && linkAnims[link.id]) {
+            linkAnims[link.id].translateY.setValue((prev.idx - idx) * (CARD_HEIGHT + 15));
+            Animated.spring(linkAnims[link.id].translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+            }).start();
+          }
+        }
+      });
+      // Remove anim for deleted item
+      if (deletedId) {
+        setLinkAnims(prev => {
+          const copy = { ...prev };
+          delete copy[deletedId];
+          return copy;
+        });
+      }
+    }, 50);
+  };
+
   async function toggleFavorite(linkId: number) {
     try {
       await LinksService.toggleFavorite(linkId);
-      if (searchQuery.trim()) {
-        searchLinks();
-      } else {
-        loadLinks();
-      }
+      await animateListChange();
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
@@ -159,12 +231,19 @@ export default function LinksScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await LinksService.deleteLink(linkId);
-              setLinks((prev) => prev.filter((l) => l.id !== linkId));
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete link');
-            }
+            // Fade out animation
+            Animated.timing(linkAnims[linkId]?.opacity || new Animated.Value(1), {
+              toValue: 0,
+              duration: 350,
+              useNativeDriver: true,
+            }).start(async () => {
+              try {
+                await LinksService.deleteLink(linkId);
+                await animateListChange(linkId);
+              } catch (error) {
+                Alert.alert('Error', 'Failed to delete link');
+              }
+            });
           },
         },
       ]
@@ -206,58 +285,69 @@ export default function LinksScreen() {
           ) : (
             <View>
               {links.map((link) => (
-                <View
+                <Animated.View
                   key={link.id}
+                  style={{
+                    opacity: typeof link.id === 'number' && linkAnims[link.id]?.opacity !== undefined ? linkAnims[link.id].opacity : 1,
+                    transform: [
+                      {
+                        translateY:
+                          typeof link.id === 'number' && linkAnims[link.id]?.translateY !== undefined
+                            ? linkAnims[link.id].translateY
+                            : 0,
+                      },
+                    ],
+                  }}
                 >
                   <TouchableOpacity style={styles.linkCard}>
-                <View style={styles.linkHeader}>
-                  <View style={styles.linkIcon}>
-                    <Ionicons name="link" size={20} color="#fff" style={{ textShadowColor: '#1A365D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
-                  </View>
-                  <View style={styles.linkInfo}>
-                    <Text style={styles.linkTitle}>{link.title}</Text>
-                    <Text style={styles.linkUrl}>{link.url}</Text>
-                  </View>
-                  <View style={{ alignItems: 'center' }}>
-                    <TouchableOpacity
-                      style={styles.favoriteButton}
-                      onPress={() => toggleFavorite(link.id!)}
-                    >
-                      <Ionicons
-                        name={link.is_favorite ? "heart" : "heart-outline"}
-                        size={16}
-                        color={link.is_favorite ? "#FF6B6B" : "#8E9BA2"}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteLink(link.id!)}
-                    >
-                      <Ionicons name="trash" size={16} color="#FF6B6B" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <Text style={styles.linkDescription} numberOfLines={2}>
-                  {link.description || "No description"}
-                </Text>
-                <View style={styles.linkFooter}>
-                  <View style={styles.tags}>
-                    {(link.tags || []).slice(0, 2).map((tag, index) => (
-                      <Text key={index} style={styles.tag}>
-                        #{tag}
+                    <View style={styles.linkHeader}>
+                      <View style={styles.linkIcon}>
+                        <Ionicons name="link" size={20} color="#fff" style={{ textShadowColor: '#1A365D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
+                      </View>
+                      <View style={styles.linkInfo}>
+                        <Text style={styles.linkTitle}>{link.title}</Text>
+                        <Text style={styles.linkUrl}>{link.url}</Text>
+                      </View>
+                      <View style={{ alignItems: 'center' }}>
+                        <TouchableOpacity
+                          style={styles.favoriteButton}
+                          onPress={() => toggleFavorite(link.id!)}
+                        >
+                          <Ionicons
+                            name={link.is_favorite ? "heart" : "heart-outline"}
+                            size={16}
+                            color={link.is_favorite ? "#FF6B6B" : "#8E9BA2"}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteLink(link.id!)}
+                        >
+                          <Ionicons name="trash" size={16} color="#FF6B6B" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <Text style={styles.linkDescription} numberOfLines={2}>
+                      {link.description || "No description"}
+                    </Text>
+                    <View style={styles.linkFooter}>
+                      <View style={styles.tags}>
+                        {(link.tags || []).slice(0, 2).map((tag, index) => (
+                          <Text key={index} style={styles.tag}>
+                            #{tag}
+                          </Text>
+                        ))}
+                      </View>
+                      <Text style={styles.linkDate}>
+                        {formatDate(
+                          link.updated_at ||
+                            link.created_at ||
+                            ""
+                        )}
                       </Text>
-                    ))}
-                  </View>
-                  <Text style={styles.linkDate}>
-                    {formatDate(
-                      link.updated_at ||
-                        link.created_at ||
-                        ""
-                    )}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-                </View>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
               ))}
             </View>
           )}
