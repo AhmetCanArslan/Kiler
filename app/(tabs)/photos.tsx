@@ -9,6 +9,7 @@ import {
   Animated,
   Dimensions,
   FlatList,
+  Image,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -263,6 +264,11 @@ function PhotosScreen() {
     );
   }, [getPhotoAnim, loadPhotos, photos]);
 
+  const stripPhotoTakenOn = (desc?: string) => {
+    if (!desc) return "No description";
+    return desc.replace(/^Photo taken on .+? at .+?$/, '').trim() || "No description";
+  };
+
   const memoizedRenderItem = useMemo(() => ({ item }: { item: Photo }) => {
     const anim = photoAnims[item.id as number] || { opacity: new Animated.Value(1), translateY: new Animated.Value(0), translateX: new Animated.Value(0), scaleY: new Animated.Value(1) };
     return (
@@ -281,14 +287,21 @@ function PhotosScreen() {
       >
         <TouchableOpacity style={styles.photoCard}>
           <View style={styles.photoPlaceholder}>
-            <Ionicons name="image" size={32} color="#8E9BA2" />
+            {item.file_path ? (
+              <Image
+                source={{ uri: item.file_path }}
+                style={{ width: '100%', height: '100%', borderRadius: 12, resizeMode: 'cover' }}
+              />
+            ) : (
+              <Ionicons name="image" size={32} color="#8E9BA2" />
+            )}
           </View>
           <View style={styles.photoInfo}>
             <Text style={styles.photoTitle} numberOfLines={1}>
               {item.title}
             </Text>
             <Text style={styles.photoDescription} numberOfLines={2}>
-              {item.description || "No description"}
+              {stripPhotoTakenOn(item.description)}
             </Text>
             <View style={styles.photoFooter}>
               <View style={styles.tags}>
