@@ -5,8 +5,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Animated,
+  Linking,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -32,6 +34,8 @@ export default function LinksScreen() {
   const [editLinkTitle, setEditLinkTitle] = useState("");
   const [editLinkUrl, setEditLinkUrl] = useState("");
   const [editLinkDescription, setEditLinkDescription] = useState("");
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewLink, setPreviewLink] = useState<Link | null>(null);
 
   const getLinkAnim = useCallback((id: number) => {
     if (!linkAnims[id]) {
@@ -368,6 +372,54 @@ export default function LinksScreen() {
     }
   }, []);
 
+  const handlePreviewLink = useCallback((link: Link) => {
+    console.log('Preview link clicked:', link); // Debug log
+    setPreviewLink(link);
+    setShowPreviewModal(true);
+  }, []);
+
+  const handleClosePreviewModal = () => {
+    setShowPreviewModal(false);
+    setPreviewLink(null);
+  };
+
+  const handleCopyLinkUrl = useCallback(async () => {
+    if (!previewLink) return;
+    try {
+      await Clipboard.setStringAsync(previewLink.url);
+      Alert.alert("Link copied", "", [{ text: "OK" }], { cancelable: true });
+    } catch (error) {
+      console.error('Error copying link URL:', error);
+      Alert.alert("Error", "Failed to copy link URL");
+    }
+  }, [previewLink]);
+
+  const handleCopyDescription = useCallback(async () => {
+    if (!previewLink?.description) return;
+    try {
+      await Clipboard.setStringAsync(previewLink.description);
+      Alert.alert("Description copied", "", [{ text: "OK" }], { cancelable: true });
+    } catch (error) {
+      console.error('Error copying description:', error);
+      Alert.alert("Error", "Failed to copy description");
+    }
+  }, [previewLink]);
+
+  const handleOpenLink = useCallback(async () => {
+    if (!previewLink) return;
+    try {
+      const canOpen = await Linking.canOpenURL(previewLink.url);
+      if (canOpen) {
+        await Linking.openURL(previewLink.url);
+      } else {
+        Alert.alert("Error", "Cannot open this URL");
+      }
+    } catch (error) {
+      console.error('Error opening link:', error);
+      Alert.alert("Error", "Failed to open link");
+    }
+  }, [previewLink]);
+
   const handleDeleteLink = useCallback((linkId: number) => {
     Alert.alert(
       'Delete Link',
@@ -447,14 +499,31 @@ export default function LinksScreen() {
         }}
       >
         <View style={styles.linkCard}>
-          <View style={styles.linkHeader}>
-            <View style={styles.linkIcon}>
-              <Ionicons name="link" size={20} color="#fff" />
+          <TouchableOpacity
+            style={styles.linkCardContent}
+            onPress={() => handlePreviewLink(item)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.linkHeader}>
+              <View style={styles.linkIcon}>
+                <Ionicons name="link" size={20} color="#fff" />
+              </View>
+              <View style={styles.linkInfo}>
+                <Text style={styles.linkTitle}>{item.title}</Text>
+                <Text style={styles.linkUrl} numberOfLines={1}>{item.url}</Text>
+              </View>
             </View>
-            <View style={styles.linkInfo}>
-              <Text style={styles.linkTitle}>{item.title}</Text>
-              <Text style={styles.linkUrl} numberOfLines={1}>{item.url}</Text>
+            {item.description && <Text style={styles.linkDescription}>{item.description}</Text>}
+            <View style={styles.linkFooter}>
+              <View style={styles.tags}>
+                {(item.tags || []).map((tag, index) => (
+                  <Text key={index} style={styles.tag}>#{tag}</Text>
+                ))}
+              </View>
+              <Text style={styles.linkDate}>{formatDate(item.updated_at || item.created_at || "")}</Text>
             </View>
+          </TouchableOpacity>
+          <View style={styles.linkActions}>
             <TouchableOpacity style={styles.favoriteButton} onPress={() => toggleFavorite(item.id!)}>
               <Ionicons
                 name={item.is_favorite ? "heart" : "heart-outline"}
@@ -472,19 +541,10 @@ export default function LinksScreen() {
               <Ionicons name="trash" size={20} color="#FF6B6B" />
             </TouchableOpacity>
           </View>
-          {item.description && <Text style={styles.linkDescription}>{item.description}</Text>}
-          <View style={styles.linkFooter}>
-            <View style={styles.tags}>
-              {(item.tags || []).map((tag, index) => (
-                <Text key={index} style={styles.tag}>#{tag}</Text>
-              ))}
-            </View>
-            <Text style={styles.linkDate}>{formatDate(item.updated_at || item.created_at || "")}</Text>
-          </View>
         </View>
       </Animated.View>
     );
-  }, [linkAnims, toggleFavorite, handleEditLink, handleDeleteLink, handleCopyLink]);
+  }, [linkAnims, toggleFavorite, handleEditLink, handleDeleteLink, handleCopyLink, handlePreviewLink]);
 
 
   return (
@@ -529,6 +589,71 @@ export default function LinksScreen() {
           )}
         </View>
       </View>
+
+      <CommonModal 
+        visible={showPreviewModal} 
+        onClose={handleClosePreviewModal}
+        maxHeight={previewLink?.description && previewLink.description.trim() ? '85%' : '60%'}
+        minHeight={previewLink?.description && previewLink.description.trim() ? 400 : 300}
+      >
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Link Preview</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClosePreviewModal}>
+            <Ionicons name="close" size={24} color="#8E9BA2" />
+          </TouchableOpacity>
+        </View>
+
+        {previewLink ? (
+          <ScrollView 
+            style={styles.previewScrollContainer}
+            contentContainerStyle={styles.previewContent} 
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+          >
+            <Text style={styles.previewLabel}>Title</Text>
+            <Text style={styles.previewText} selectable={true}>
+              {previewLink.title}
+            </Text>
+
+            <Text style={styles.previewLabel}>URL</Text>
+            <Text style={styles.previewText} selectable={true}>
+              {previewLink.url}
+            </Text>
+
+            {previewLink.description && previewLink.description.trim() && (
+              <>
+                <Text style={styles.previewLabel}>Description</Text>
+                <Text style={styles.previewText} selectable={true}>
+                  {previewLink.description}
+                </Text>
+              </>
+            )}
+
+            <View style={styles.previewActions}>
+              <TouchableOpacity style={styles.previewActionButton} onPress={handleCopyLinkUrl}>
+                <Ionicons name="copy-outline" size={18} color="#4FACFE" />
+                <Text style={[styles.previewActionText, { color: "#4FACFE" }]}>Copy URL</Text>
+              </TouchableOpacity>
+              
+              {previewLink.description && previewLink.description.trim() && (
+                <TouchableOpacity style={styles.previewActionButton} onPress={handleCopyDescription}>
+                  <Ionicons name="copy-outline" size={18} color="#68D391" />
+                  <Text style={[styles.previewActionText, { color: "#68D391" }]}>Copy Description</Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity style={styles.previewActionButton} onPress={handleOpenLink}>
+                <Ionicons name="open-outline" size={18} color="#9F7AEA" />
+                <Text style={[styles.previewActionText, { color: "#9F7AEA" }]}>Open Link</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        ) : (
+          <View style={styles.previewEmptyState}>
+            <Text style={styles.previewEmptyText}>No link data available</Text>
+          </View>
+        )}
+      </CommonModal>
 
       <CommonModal visible={showLinkModal} onClose={handleCloseModal}>
         <View style={styles.modalHeader}>
@@ -677,6 +802,18 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: "#2D3748",
+  },
+  linkCardContent: {
+    flex: 1,
+  },
+  linkActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#2D3748",
   },
   linkHeader: {
     flexDirection: "row",
@@ -844,5 +981,66 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  // Preview modal styles
+  previewScrollContainer: {
+    flex: 1,
+    minHeight: 0, // Allow ScrollView to shrink
+  },
+  previewContent: {
+    paddingBottom: 20,
+    flexGrow: 1,
+    flexShrink: 0, // Don't allow content to shrink
+  },
+  previewEmptyState: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100,
+  },
+  previewEmptyText: {
+    color: '#A0AEC0',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  previewLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#A0AEC0",
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  previewText: {
+    fontSize: 16,
+    color: "#F7FAFC",
+    backgroundColor: "#2D3748",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#4A5568",
+    lineHeight: 22,
+    minHeight: 44,
+    textAlignVertical: "top",
+  },
+  previewActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 20,
+    gap: 10,
+  },
+  previewActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2D3748",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#4A5568",
+  },
+  previewActionText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 6,
   },
 });

@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import {
-    Animated,
-    Easing,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    TouchableOpacity
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface CommonModalProps {
@@ -14,6 +15,8 @@ interface CommonModalProps {
   onClose: () => void;
   children: React.ReactNode | ((props: { handleClose: () => void }) => React.ReactNode);
   animationType?: 'slide' | 'fade' | 'none';
+  maxHeight?: string | number;
+  minHeight?: string | number;
 }
 
 
@@ -22,6 +25,8 @@ export const CommonModal: React.FC<CommonModalProps> = ({
   onClose,
   children,
   animationType = 'none',
+  maxHeight = '70%',
+  minHeight = 370,
 }) => {
   const modalAnim = useRef(new Animated.Value(0)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -130,9 +135,7 @@ export const CommonModal: React.FC<CommonModalProps> = ({
         >
           <Animated.View
             style={[
-              styles.modalContent,
               {
-                maxHeight: '70%',
                 transform: [
                   {
                     translateY: modalAnim.interpolate({
@@ -148,8 +151,16 @@ export const CommonModal: React.FC<CommonModalProps> = ({
               }
             ]}
           >
-            {/* children'a handleClose fonksiyonunu prop olarak geçiyoruz */}
-            {typeof children === 'function' ? children({ handleClose }) : children}
+            <View
+              style={[
+                styles.modalContent,
+                maxHeight ? { maxHeight: maxHeight as any } : {},
+                minHeight ? { minHeight: minHeight as any } : {},
+              ]}
+            >
+              {/* children'a handleClose fonksiyonunu prop olarak geçiyoruz */}
+              {typeof children === 'function' ? children({ handleClose }) : children}
+            </View>
           </Animated.View>
         </TouchableOpacity>
       </KeyboardAvoidingView>
