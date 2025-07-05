@@ -31,6 +31,7 @@ function PhotosScreen() {
   const [loading, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [photoAnims, setPhotoAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
+  const [previewPhoto, setPreviewPhoto] = useState<Photo | null>(null);
 
   const getPhotoAnim = useCallback((id: number) => {
     if (!photoAnims[id]) {
@@ -285,7 +286,7 @@ function PhotosScreen() {
           overflow: 'hidden',
         }}
       >
-        <TouchableOpacity style={styles.photoCard}>
+        <TouchableOpacity style={styles.photoCard} onPress={() => setPreviewPhoto(item)}>
           <View style={styles.photoPlaceholder}>
             {item.file_path ? (
               <Image
@@ -523,6 +524,44 @@ function PhotosScreen() {
           />
         )}
       </View>
+
+      {/* Photo Preview Modal */}
+      {previewPhoto && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.92)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 100,
+        }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 40, right: 30, zIndex: 101 }}
+            onPress={() => setPreviewPhoto(null)}
+          >
+            <Ionicons name="close-circle" size={40} color="#fff" />
+          </TouchableOpacity>
+          <Image
+            source={{ uri: previewPhoto.file_path }}
+            style={{
+              width: '90%',
+              height: '70%',
+              borderRadius: 18,
+              resizeMode: 'contain',
+              backgroundColor: '#222',
+            }}
+          />
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 18 }} numberOfLines={2}>{previewPhoto.title}</Text>
+          {stripPhotoTakenOn(previewPhoto.description) !== 'No description' && (
+            <Text style={{ color: '#ccc', fontSize: 14, marginTop: 6, marginBottom: 10, textAlign: 'center', maxWidth: '90%' }} numberOfLines={3}>
+              {stripPhotoTakenOn(previewPhoto.description)}
+            </Text>
+          )}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
