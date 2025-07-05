@@ -365,7 +365,7 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     <SafeAreaView style={styles.container}>
       {settingsButton}
       <View style={{ flex: 1 }}>
-        <ScrollView style={styles.content}>
+        <ScrollView style={styles.content} scrollEnabled={false}>
           <View style={styles.header}>
             <Text style={styles.greeting}>Kiler</Text>
             <Text style={styles.subtitle}>Your digital poetry archive</Text>
