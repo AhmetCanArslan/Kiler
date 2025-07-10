@@ -35,6 +35,9 @@ function PhotosScreen() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [photoAnims, setPhotoAnims] = useState<{ [id: number]: { opacity: Animated.Value, translateY: Animated.Value, translateX: Animated.Value, scaleY: Animated.Value } }>({});
   const [previewPhoto, setPreviewPhoto] = useState<Photo | null>(null);
+  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
 
   const getPhotoAnim = useCallback((id: number) => {
     if (!photoAnims[id]) {
@@ -132,79 +135,17 @@ function PhotosScreen() {
     return date.toLocaleDateString();
   };
 
-  const animateFavoriteMove = useCallback(async (oldIdx: number, newIdx: number, photoId: number) => {
-    const anim = getPhotoAnim(photoId);
-
-    // 1. Fade out the item
-    await new Promise(res => Animated.timing(anim.opacity, {
-      toValue: 0,
-      duration: 120,
-      useNativeDriver: true,
-    }).start(() => res(null)));
-
-    // 2. Update list immediately
-    setPhotos(prevPhotos => {
-      const newPhotos = [...prevPhotos];
-      const [movedPhoto] = newPhotos.splice(oldIdx, 1);
-      newPhotos.splice(newIdx, 0, movedPhoto);
-      return newPhotos;
-    });
-
-    // 3. Slide down animation for items that need to move
-    await new Promise(resolve => {
-      const slideAnimations = photos
-        .filter((photo, index) => photo.id !== photoId && index >= newIdx)
-        .map(photo => {
-          const photoAnim = getPhotoAnim(photo.id as number);
-          photoAnim.translateY.setValue(-CARD_HEIGHT);
-          return Animated.timing(photoAnim.translateY, {
-            toValue: 0,
-            duration: 180,
-            useNativeDriver: true,
-          });
-        });
-
-      if (slideAnimations.length > 0) {
-        Animated.parallel(slideAnimations).start(() => resolve(null));
-      } else {
-        resolve(null);
-      }
-    });
-
-    // 4. Fade in the favorite item at new position
-    anim.translateY.setValue(0);
-    await new Promise(res => Animated.timing(anim.opacity, {
-      toValue: 1,
-      duration: 120,
-      useNativeDriver: true,
-    }).start(() => res(null)));
-
-  }, [getPhotoAnim, photos]);
+  // Favori animasyonunu kaldırıyoruz, sıralama değişiminden sonra doğrudan güncelleme yapıyoruz
 
   const toggleFavorite = useCallback(async (photoId: number) => {
     try {
-      const oldIdx = photos.findIndex(p => p.id === photoId);
       await PhotosService.toggleFavorite(photoId);
-
-      const allPhotos = await PhotosService.getAllPhotos();
-      const sortedPhotos = allPhotos.sort((a, b) => {
-        if (a.is_favorite && !b.is_favorite) return -1;
-        if (!a.is_favorite && b.is_favorite) return 1;
-        const dateA = new Date(a.updated_at || a.created_at || '').getTime();
-        const dateB = new Date(b.updated_at || b.created_at || '').getTime();
-        return dateB - dateA;
-      });
-      const newIdx = sortedPhotos.findIndex(p => p.id === photoId);
-
-      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
-        await animateFavoriteMove(oldIdx, newIdx, photoId);
-      }
-      loadPhotos();
+      await loadPhotos();
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite status');
     }
-  }, [photos, animateFavoriteMove, loadPhotos]);
+  }, [loadPhotos]);
 
   const handleDeletePhoto = useCallback((photoId: number) => {
     Alert.alert(
@@ -273,6 +214,24 @@ function PhotosScreen() {
     return desc.replace(/^Photo taken on .+? at .+?$/, '').trim() || "No description";
   };
 
+  const handleEditDescriptionSave = async () => {
+    if (!editingPhoto) return;
+    setEditLoading(true);
+    try {
+    if (typeof editingPhoto.id === 'number') {
+      await PhotosService.updatePhoto(editingPhoto.id, { description: editDescription });
+    }
+      setEditingPhoto(null);
+      setEditDescription("");
+      await loadPhotos();
+      Alert.alert('Success', 'Description updated!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update description');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const memoizedRenderItem = useMemo(() => ({ item }: { item: Photo }) => {
     const anim = photoAnims[item.id as number] || { opacity: new Animated.Value(1), translateY: new Animated.Value(0), translateX: new Animated.Value(0), scaleY: new Animated.Value(1) };
     return (
@@ -284,7 +243,7 @@ function PhotosScreen() {
             { translateX: anim.translateX },
             { scaleY: anim.scaleY }
           ],
-          width: imageSize,
+          flex: 1,
           marginBottom: 15,
           overflow: 'hidden',
         }}
@@ -309,25 +268,12 @@ function PhotosScreen() {
             </Text>
             <View style={styles.photoFooter}>
               <View style={styles.tags}>
-                {(item.tags || []).slice(0, 2).map((tag, index) => (
-                  <Text key={index} style={styles.tag}>
-                    #{tag}
-                  </Text>
-                ))}
               </View>
-              <Text style={styles.photoDate}>
-                {formatDate(
-                  item.taken_at ||
-                  item.updated_at ||
-                  item.created_at ||
-                  ""
-                )}
-              </Text>
             </View>
           </View>
-          <View style={{ position: 'absolute', top: 8, right: 8, alignItems: 'center' }}>
+          <View style={{ position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity
-              style={styles.favoriteButton}
+              style={[styles.favoriteButton, { position: 'relative', top: undefined, right: undefined }]}
               onPress={() => toggleFavorite(item.id!)}
             >
               <Ionicons
@@ -335,6 +281,15 @@ function PhotosScreen() {
                 size={16}
                 color={item.is_favorite ? "#FF6B6B" : "#8E9BA2"}
               />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => {
+                setEditingPhoto(item);
+                setEditDescription(item.description || "");
+              }}
+            >
+              <Ionicons name="create-outline" size={16} color="#F6AD55" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteButton}
@@ -513,8 +468,10 @@ function PhotosScreen() {
             renderItem={memoizedRenderItem}
             keyExtractor={(item) => item.id!.toString()}
             numColumns={2}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
-            contentContainerStyle={styles.content}
+            columnWrapperStyle={{ gap: 15 }}
+            contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 20, flexGrow: 1 }}
+            extraData={{ photos, photoAnims }}
+            removeClippedSubviews={false}
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
                 <Ionicons name="camera-outline" size={64} color="#4A5568" />
@@ -590,6 +547,55 @@ function PhotosScreen() {
           </View>
         </View>
       )}
+      {/* Edit Description Modal */}
+      {editingPhoto && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 200,
+        }}>
+          <View style={{ backgroundColor: '#1A202C', borderRadius: 16, padding: 24, width: '85%' }}>
+            <Text style={{ color: '#F7FAFC', fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Edit Description</Text>
+            <TextInput
+              style={{
+                backgroundColor: '#2D3748',
+                color: '#F7FAFC',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 15,
+                marginBottom: 16,
+              }}
+              multiline
+              value={editDescription}
+              onChangeText={setEditDescription}
+              placeholder="Enter new description..."
+              placeholderTextColor="#8E9BA2"
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+              <TouchableOpacity
+                style={{ marginRight: 12 }}
+                onPress={() => setEditingPhoto(null)}
+                disabled={editLoading}
+              >
+                <Text style={{ color: '#A0AEC0', fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: '#F6AD55', borderRadius: 8, paddingHorizontal: 18, paddingVertical: 8 }}
+                onPress={handleEditDescriptionSave}
+                disabled={editLoading}
+              >
+                <Text style={{ color: '#1A202C', fontWeight: 'bold', fontSize: 16 }}>{editLoading ? 'Saving...' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -649,15 +655,21 @@ const styles = StyleSheet.create({
     width: '100%',
     borderWidth: 1,
     borderColor: "#2D3748",
+    minHeight: 260,
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+    // Remove any possible overlap by ensuring no absolute/fixed children except for buttons
   },
   photoPlaceholder: {
     width: "100%",
-    height: imageSize * 0.7,
+    height: imageSize,
     backgroundColor: "#2D3748",
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
+    overflow: 'hidden', // Prevent image overflow
   },
   photoInfo: {
     flex: 1,
@@ -672,7 +684,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#A0AEC0",
     lineHeight: 16,
-    marginBottom: 8,
+    marginBottom: 26
+    
+    ,
   },
   photoFooter: {
     marginTop: "auto",
@@ -705,16 +719,20 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   favoriteButton: {
-    position: "absolute",
-    top: 8,
-    right: 38,
     backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: 12,
     padding: 6,
+    marginLeft: 0,
+  },
+  editButton: {
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 12,
+    padding: 6,
+    marginLeft: 8,
   },
   deleteButton: {
     padding: 8,
-    marginTop: 2,
+    marginLeft: 8,
   },
   loadingContainer: {
     flex: 1,
