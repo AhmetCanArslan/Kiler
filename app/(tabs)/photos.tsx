@@ -286,7 +286,8 @@ function PhotosScreen() {
               style={styles.editButton}
               onPress={() => {
                 setEditingPhoto(item);
-                setEditDescription(item.description || "");
+                const desc = stripPhotoTakenOn(item.description);
+                setEditDescription(desc === "No description" ? "" : desc);
               }}
             >
               <Ionicons name="create-outline" size={16} color="#F6AD55" />
