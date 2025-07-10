@@ -561,7 +561,7 @@ function PhotosScreen() {
           alignItems: 'center',
           zIndex: 200,
         }}>
-          <View style={{ backgroundColor: '#1A202C', borderRadius: 16, padding: 24, width: '85%' }}>
+        <View style={{ backgroundColor: '#1A202C', borderRadius: 16, padding: 24, width: '85%' }}>
             <Text style={{ color: '#F7FAFC', fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Edit Description</Text>
             <TextInput
               style={{
@@ -578,20 +578,35 @@ function PhotosScreen() {
               placeholder="Enter new description..."
               placeholderTextColor="#8E9BA2"
             />
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
               <TouchableOpacity
-                style={{ marginRight: 12 }}
+                style={{
+                  backgroundColor: '#2D3748',
+                  borderRadius: 8,
+                  paddingHorizontal: 18,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 8,
+                }}
                 onPress={() => setEditingPhoto(null)}
                 disabled={editLoading}
               >
-                <Text style={{ color: '#A0AEC0', fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: '#A0AEC0', fontSize: 16, fontWeight: 'bold', textAlign: 'center' }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ backgroundColor: '#F6AD55', borderRadius: 8, paddingHorizontal: 18, paddingVertical: 8 }}
+                style={{
+                  backgroundColor: '#F6AD55',
+                  borderRadius: 8,
+                  paddingHorizontal: 18,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
                 onPress={handleEditDescriptionSave}
                 disabled={editLoading}
               >
-                <Text style={{ color: '#1A202C', fontWeight: 'bold', fontSize: 16 }}>{editLoading ? 'Saving...' : 'Save'}</Text>
+                <Text style={{ color: '#1A202C', fontWeight: 'bold', fontSize: 16, textAlign: 'center' }}>{editLoading ? 'Saving...' : 'Save'}</Text>
               </TouchableOpacity>
             </View>
           </View>
