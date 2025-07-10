@@ -218,15 +218,24 @@ function PhotosScreen() {
     if (!editingPhoto) return;
     setEditLoading(true);
     try {
-    if (typeof editingPhoto.id === 'number') {
-      await PhotosService.updatePhoto(editingPhoto.id, { description: editDescription });
-    }
-      setEditingPhoto(null);
-      setEditDescription("");
-      await loadPhotos();
-      Alert.alert('Success', 'Description updated!');
+      if (typeof editingPhoto.id === 'number') {
+        await PhotosService.updatePhoto(editingPhoto.id, { description: editDescription });
+        setEditingPhoto(null);
+        setEditDescription("");
+        await loadPhotos();
+        Alert.alert('Success', 'Description updated!');
+      } else {
+        await PhotosService.createPhoto({
+          ...editingPhoto,
+          description: editDescription || `Photo taken on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`,
+        });
+        setEditingPhoto(null);
+        setEditDescription("");
+        await loadPhotos();
+        Alert.alert('Success', 'Photo saved successfully!');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to update description');
+      Alert.alert('Error', 'Failed to save description');
     } finally {
       setEditLoading(false);
     }
@@ -375,13 +384,14 @@ function PhotosScreen() {
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
-      
       const title = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
       const filename = asset.uri.split('/').pop() || 'untitled.jpg';
 
-      await PhotosService.createPhoto({
-        title: title,
-        description: `Photo taken on ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`,
+      // Instead of saving directly, open the description modal for this photo
+      const tempPhoto = {
+        id: undefined,
+        title,
+        description: '',
         file_path: asset.uri,
         original_name: filename,
         file_size: asset.fileSize,
@@ -390,15 +400,15 @@ function PhotosScreen() {
         mime_type: asset.mimeType,
         tags: ['photo', 'captured'],
         taken_at: now.toISOString(),
-      });
-
-      // Refresh photos list immediately
-      await loadPhotos();
-
-      Alert.alert('Success', 'Photo saved successfully!');
+        is_favorite: false,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      };
+      setEditingPhoto(tempPhoto);
+      setEditDescription('');
     } catch (error) {
-      console.error('Error saving photo:', error);
-      Alert.alert('Error', 'Failed to save photo');
+      console.error('Error preparing photo for description:', error);
+      Alert.alert('Error', 'Failed to prepare photo');
     }
   };
 
