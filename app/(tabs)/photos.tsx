@@ -29,6 +29,9 @@ const imageSize = (width - 75) / 2;
 const CARD_HEIGHT = 180; // Approximate height of a photo card (adjust if needed)
 
 function PhotosScreen() {
+  // History modal state
+  const [showHistory, setShowHistory] = useState(false);
+  const [deletedPhotos, setDeletedPhotos] = useState<Photo[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,10 +178,10 @@ function PhotosScreen() {
             ]).start(() => res(null)));
 
             try {
+              // Get deleted photo object before removing
+              const deletedPhoto = photos.find(photo => photo.id === photoId);
               await PhotosService.deletePhoto(photoId);
-              
               // 2. Collapse the faded item by animating its scaleY to 0
-              // This creates the gap-closing effect without re-rendering the list
               await new Promise(resolve => {
                 Animated.timing(anim.scaleY, {
                   toValue: 0,
@@ -186,17 +189,16 @@ function PhotosScreen() {
                   useNativeDriver: true,
                 }).start(() => resolve(null));
               });
-              
               // 3. Now safely update the list - items are already in their final visual positions
               setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== photoId));
-              
               // 4. Clean up animation state for deleted item
               setPhotoAnims(prev => {
                 const newAnims = { ...prev };
                 delete newAnims[photoId];
                 return newAnims;
               });
-
+              // 5. Add to deletedPhotos history
+              if (deletedPhoto) setDeletedPhotos(prev => [deletedPhoto, ...prev]);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete photo');
               anim.opacity.setValue(1); // Restore on error
@@ -446,6 +448,10 @@ function PhotosScreen() {
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1 }}>
         <View style={styles.header}>
+          {/* History Button */}
+          <TouchableOpacity style={{ marginRight: 10 }} onPress={() => setShowHistory(true)}>
+            <Ionicons name="time" size={24} color="#F6AD55" />
+          </TouchableOpacity>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#8E9BA2" style={{ textShadowColor: '#1A365D', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }} />
             <TextInput
@@ -495,6 +501,42 @@ function PhotosScreen() {
           />
         )}
       </View>
+
+      {/* History Modal */}
+      {showHistory && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.95)',
+          zIndex: 999,
+          padding: 20,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+            <Text style={{ color: '#F6AD55', fontSize: 22, fontWeight: 'bold', flex: 1 }}>Deleted Photos</Text>
+            <TouchableOpacity onPress={() => setShowHistory(false)}>
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          {deletedPhotos.length === 0 ? (
+            <Text style={{ color: '#A0AEC0', fontSize: 16, textAlign: 'center', marginTop: 40 }}>No deleted photos yet.</Text>
+          ) : (
+            <FlatList
+              data={deletedPhotos}
+              keyExtractor={item => item.id?.toString() || Math.random().toString()}
+              renderItem={({ item }) => (
+                <View style={{ backgroundColor: '#1A202C', borderRadius: 16, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: '#2D3748' }}>
+                  <Text style={{ color: '#F6AD55', fontWeight: 'bold', fontSize: 16 }}>{item.title}</Text>
+                  <Text style={{ color: '#A0AEC0', fontSize: 12, marginTop: 4 }}>{stripPhotoTakenOn(item.description)}</Text>
+                  <Text style={{ color: '#8E9BA2', fontSize: 10, marginTop: 8 }}>Deleted at: {new Date().toLocaleString()}</Text>
+                </View>
+              )}
+            />
+          )}
+        </View>
+      )}
 
       {/* Photo Preview Modal */}
       {previewPhoto && (

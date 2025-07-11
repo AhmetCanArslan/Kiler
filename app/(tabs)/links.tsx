@@ -53,6 +53,10 @@ export default function LinksScreen() {
   const [previewLink, setPreviewLink] = useState<Link | null>(null);
   const [cardWidth, setCardWidth] = useState(getResponsiveCardWidth());
 
+  // History modal state
+  const [showHistory, setShowHistory] = useState(false);
+  const [deletedLinks, setDeletedLinks] = useState<Link[]>([]);
+
   // Handle screen dimension changes
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -464,8 +468,6 @@ export default function LinksScreen() {
           onPress: async () => {
             const anim = getLinkAnim(linkId);
             const linkIndex = links.findIndex(l => l.id === linkId);
-
-            // 1. Fade out and slide the item simultaneously
             await new Promise(res => {
               Animated.parallel([
                 Animated.timing(anim.opacity, {
@@ -474,18 +476,16 @@ export default function LinksScreen() {
                   useNativeDriver: true,
                 }),
                 Animated.timing(anim.translateX, {
-                  toValue: -300, // Slide left off screen
+                  toValue: -300,
                   duration: 200,
                   useNativeDriver: true,
                 })
               ]).start(() => res(null));
             });
-
             try {
+              // Get deleted link object before removing
+              const deletedLink = links.find(link => link.id === linkId);
               await LinksService.deleteLink(linkId);
-              
-              // 2. Collapse the item by animating its scaleY to 0
-              // This creates the gap-closing effect without re-rendering the list
               await new Promise(resolve => {
                 Animated.timing(anim.scaleY, {
                   toValue: 0,
@@ -493,22 +493,19 @@ export default function LinksScreen() {
                   useNativeDriver: true,
                 }).start(() => resolve(null));
               });
-              
-              // 3. Now safely update the list - items are already in their final visual positions
               setLinks(prevLinks => prevLinks.filter(link => link.id !== linkId));
-              
-              // 4. Clean up animation state for deleted item
               setLinkAnims(prev => {
                 const newAnims = { ...prev };
                 delete newAnims[linkId];
                 return newAnims;
               });
-
+              // Add to deletedLinks history
+              if (deletedLink) setDeletedLinks(prev => [deletedLink, ...prev]);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete link');
-              anim.opacity.setValue(1); // Restore on error
-              anim.translateX.setValue(0); // Restore position
-              anim.scaleY.setValue(1); // Restore scale
+              anim.opacity.setValue(1);
+              anim.translateX.setValue(0);
+              anim.scaleY.setValue(1);
             }
           },
         },
@@ -583,6 +580,10 @@ export default function LinksScreen() {
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1 }}>
         <View style={styles.header}>
+          {/* History Button */}
+          <TouchableOpacity style={{ marginRight: 10 }} onPress={() => setShowHistory(true)}>
+            <Ionicons name="time" size={24} color="#4FACFE" />
+          </TouchableOpacity>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#8E9BA2" />
             <TextInput
@@ -597,7 +598,41 @@ export default function LinksScreen() {
             <Ionicons name="add" size={28} color="#fff" />
           </TouchableOpacity>
         </View>
-
+        {/* History Modal */}
+        {showHistory && (
+          <View style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.95)',
+            zIndex: 999,
+            padding: 20,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ color: '#4FACFE', fontSize: 22, fontWeight: 'bold', flex: 1 }}>Deleted Links</Text>
+              <TouchableOpacity onPress={() => setShowHistory(false)}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            {deletedLinks.length === 0 ? (
+              <Text style={{ color: '#A0AEC0', fontSize: 16, textAlign: 'center', marginTop: 40 }}>No deleted links yet.</Text>
+            ) : (
+              <Animated.FlatList
+                data={deletedLinks}
+                keyExtractor={item => item.id?.toString() || Math.random().toString()}
+                renderItem={({ item }) => (
+                  <View style={{ backgroundColor: '#1A202C', borderRadius: 16, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: '#2D3748' }}>
+                    <Text style={{ color: '#4FACFE', fontWeight: 'bold', fontSize: 16 }}>{item.title}</Text>
+                    <Text style={{ color: '#A0AEC0', fontSize: 12, marginTop: 4 }} numberOfLines={2}>{item.url}</Text>
+                    <Text style={{ color: '#8E9BA2', fontSize: 10, marginTop: 8 }}>Deleted at: {new Date().toLocaleString()}</Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        )}
         <View style={styles.content}>
           {loading ? (
             <View style={styles.loadingContainer}>
