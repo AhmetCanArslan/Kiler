@@ -3,18 +3,18 @@ import { useFocusEffect } from "@react-navigation/native";
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    Linking,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Dimensions,
+  Linking,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Link, LinksService } from "../../database/linksService";
@@ -170,8 +170,11 @@ export default function LinksScreen() {
 
       setLinks(sortedLinks);
     } catch (error) {
-      console.error('Error loading links:', error);
-      Alert.alert('Error', 'Failed to load links');
+      // Only show error if the database operation itself fails
+      if (error instanceof Error && error.message && !error.message.includes('no such table')) {
+        Alert.alert('Error', 'Failed to load links');
+      }
+      setLinks([]); // Ensure empty state
     } finally {
       if (isInitial) {
         setLoading(false);

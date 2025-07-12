@@ -4,21 +4,21 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Dimensions,
-    FlatList,
-    Image,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // import ZoomableImage from "../../components/ZoomableImage";
@@ -90,8 +90,11 @@ function PhotosScreen() {
 
       setPhotos(sortedPhotos);
     } catch (error) {
-      console.error('Error loading photos:', error);
-      Alert.alert('Error', 'Failed to load photos');
+      // Only show error if the database operation itself fails
+      if (error instanceof Error && error.message && !error.message.includes('no such table')) {
+            Alert.alert('Error', 'Failed to load photos');
+        }
+      setPhotos([]); // Ensure empty state
     } finally {
       if (isInitial) {
         setLoading(false);

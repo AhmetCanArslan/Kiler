@@ -107,8 +107,11 @@ export default function NotesScreen() {
 
       setNotes(sortedNotes);
     } catch (error) {
-      console.error('Error loading notes:', error);
-      Alert.alert('Error', 'Failed to load notes');
+      // Only show error if the database operation itself fails
+      if (error instanceof Error && error.message && !error.message.includes('no such table')) {
+          Alert.alert('Error', 'Failed to load notes');
+      }
+      setNotes([]); // Ensure empty state
     } finally {
       if (isInitial) {
         setLoading(false);
