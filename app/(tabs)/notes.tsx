@@ -598,7 +598,7 @@ export default function NotesScreen() {
         visible={showNoteModal} 
         onClose={handleCloseModal}
         maxHeight="90%"
-        minHeight={550}
+        minHeight={365}
       >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Add New Note</Text>

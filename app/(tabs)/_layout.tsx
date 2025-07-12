@@ -1,4 +1,3 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useRouter } from "expo-router";
@@ -26,7 +25,7 @@ export default function TabLayout() {
         initialRouteName="home"
         tabBarPosition="bottom"
         screenOptions={({ route }) => ({
-          swipeEnabled: route.name !== "photos", // Disable swipe when in photos tab
+          swipeEnabled: true, // Always enable swipe between tabs
           tabBarActiveTintColor:
             route.name === "notes"
               ? "#2ee28f"
@@ -121,3 +120,4 @@ export default function TabLayout() {
     </SafeAreaView>
   );
 }
+
