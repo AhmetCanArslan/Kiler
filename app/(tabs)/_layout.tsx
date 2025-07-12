@@ -2,7 +2,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useRouter } from "expo-router";
+import { useEffect } from 'react';
 import { TouchableOpacity } from "react-native";
+import { initializeDatabase } from '../../database/database';
 import HomeScreen from './home';
 import LinksScreen from './links';
 import NotesScreen from './notes';
@@ -15,6 +17,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const router = useRouter();
+  useEffect(() => {
+    initializeDatabase();
+  }, []);
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1A1D23' }} edges={['top', 'bottom', 'left', 'right']}>
       <Tab.Navigator
