@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Kiler - Digital Archive",
+    "slug": "kiler",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1D23"
+    },
+    "android": {
+      "intentFilters": [
+        {
+          "action": "SEND",
+          "data": [
+            { "mimeType": "text/plain" },
+            { "mimeType": "image/*" },
+            { "mimeType": "text/html" },
+            { "mimeType": "application/pdf" }
+          ],
+          "category": ["DEFAULT"],
+          "autoVerify": true
+        }
+      ],
+      "package": "com.ahmetcanarslan.kiler"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8b34f04f-922a-41ae-9932-8b0ec521bce1"
+      }
+    }
+  }
+}
