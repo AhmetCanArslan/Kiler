@@ -1,23 +1,24 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 // import ZoomableImage from "../../components/ZoomableImage";
@@ -41,6 +42,8 @@ function PhotosScreen() {
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [editDescription, setEditDescription] = useState("");
   const [editLoading, setEditLoading] = useState(false);
+
+  const { shareUri } = useLocalSearchParams<{ shareUri?: string }>();
 
   const getPhotoAnim = useCallback((id: number) => {
     if (!photoAnims[id]) {
@@ -443,6 +446,32 @@ function PhotosScreen() {
       );
     }
   };
+
+  useEffect(() => {
+    if (Platform.OS === "android" && shareUri) {
+      // Open description modal for shared photo
+      const now = new Date();
+      const filename = shareUri.split("/").pop() || "shared.jpg";
+      const tempPhoto = {
+        id: undefined,
+        title: `Shared_${now.getTime()}`,
+        description: "",
+        file_path: shareUri,
+        original_name: filename,
+        file_size: undefined,
+        width: undefined,
+        height: undefined,
+        mime_type: undefined,
+        tags: ["photo", "shared"],
+        taken_at: now.toISOString(),
+        is_favorite: false,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      };
+      setEditingPhoto(tempPhoto);
+      setEditDescription("");
+    }
+  }, [shareUri]);
 
   return (
     <SafeAreaView style={styles.container}>

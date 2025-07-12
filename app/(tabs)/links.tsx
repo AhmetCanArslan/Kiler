@@ -3,18 +3,18 @@ import { useFocusEffect } from "@react-navigation/native";
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  Linking,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Animated,
+    Dimensions,
+    Linking,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Link, LinksService } from "../../database/linksService";

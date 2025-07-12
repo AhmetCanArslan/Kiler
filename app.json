@@ -21,7 +21,27 @@
       },
       "backgroundColor": "#0F1419",
       "edgeToEdgeEnabled": true,
-      "package": "com.ahmetcanarslan.kiler"
+      "package": "com.ahmetcanarslan.kiler",
+      "intentFilters": [
+        {
+          "action": "SEND",
+          "data": [
+            {
+              "mimeType": "image/*"
+            },
+            {
+              "mimeType": "text/plain"
+            },
+            {
+              "mimeType": "text/uri-list"
+            }
+          ],
+          "category": ["DEFAULT"],
+          "autoVerify": true,
+          "scheme": "kiler",
+          "pathPrefix": "/share"
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

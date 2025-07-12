@@ -1,17 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { getDatabaseStats } from "../../database/database";
@@ -55,6 +56,8 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
     tags_count: 0,
     collections_count: 0,
   });
+
+  const { shareText } = useLocalSearchParams<{ shareText?: string }>();
 
   const loadData = useCallback(async () => {
     // Skip database operations on web platform
@@ -360,6 +363,14 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
   const handleScanText = () => {
     Alert.alert("Scan Text", "This feature will be available soon!");
   };
+
+  useEffect(() => {
+    if (Platform.OS === "android" && shareText) {
+      setShowNoteModal(true);
+      setNoteTitle("Shared Note");
+      setNoteContent(shareText);
+    }
+  }, [shareText]);
 
   return (
     <SafeAreaView style={styles.container}>
