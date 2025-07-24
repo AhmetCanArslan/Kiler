@@ -27,3 +27,6 @@ export async function copyContentUriToCache(contentUri: string): Promise<string>
     throw error;
   }
 }
+
+// Prevent Expo Router warning by exporting an empty component as default
+export default function FileUtilsPlaceholder() { return null; }

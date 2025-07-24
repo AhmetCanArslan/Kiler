@@ -83,6 +83,26 @@ const ShareIntentHandler: React.FC = () => {
         }
       },
       (error: any) => {
+        if (!error) {
+          console.error('[ShareIntentHandler] Share intent error: Received null error object');
+          return;
+        }
+        // Filter out known harmless NullPointerException spam from react-native-receive-sharing-intent
+        if (
+          typeof error === 'object' &&
+          error.message &&
+          error.message.includes("java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.content.Intent.getAction()' on a null object reference")
+        ) {
+          // Silently ignore this known issue
+          return;
+        }
+        if (
+          typeof error === 'string' &&
+          error.includes("java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.content.Intent.getAction()' on a null object reference")
+        ) {
+          // Silently ignore this known issue
+          return;
+        }
         console.error('[ShareIntentHandler] Share intent error:', error);
         if (error instanceof Error) {
           console.error(error.stack);
