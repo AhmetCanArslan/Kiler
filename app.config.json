@@ -5,31 +5,59 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#1A1D23"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ahmetcanarslan.kiler"
+    },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#1A1D23"
+      },
+      "package": "com.ahmetcanarslan.kiler",
+
       "intentFilters": [
         {
           "action": "SEND",
-          "data": [
-            { "mimeType": "text/plain" },
-            { "mimeType": "image/*" },
-            { "mimeType": "text/html" },
-            { "mimeType": "application/pdf" }
-          ],
-          "category": ["DEFAULT"],
-          "autoVerify": true
+          "category": "DEFAULT",
+          "data": {
+            "mimeType": "text/plain"
+          }
+        },
+        {
+          "action": "SEND",
+          "category": "DEFAULT",
+          "data": {
+            "mimeType": "image/*"
+          }
+        },
+        {
+          "action": "SEND_MULTIPLE",
+          "category": "DEFAULT",
+          "data": {
+            "mimeType": "image/*"
+          }
         }
-      ],
-      "package": "com.ahmetcanarslan.kiler"
+      ]
     },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
     "extra": {
       "eas": {
-        "projectId": "8b34f04f-922a-41ae-9932-8b0ec521bce1"
+        "projectId": "8b34f04f-922a-41ae-9932-8b0ec521bce1" 
       }
     }
   }

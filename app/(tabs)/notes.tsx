@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Clipboard from 'expo-clipboard';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -35,6 +36,18 @@ const getResponsiveCardWidth = () => {
 const CARD_HEIGHT = 120; // Approximate height of a note card (adjust if needed)
 
 export default function NotesScreen() {
+  // Handle share intent params
+  const { shareText, showNoteModal: showNoteModalParam } = useLocalSearchParams<{ shareText?: string; showNoteModal?: string }>();
+  const router = useRouter();
+  // Open modal and prefill note if shareText param is present
+  useEffect(() => {
+    if (Platform.OS === 'android' && showNoteModalParam === 'true' && shareText) {
+      setNoteContent(shareText);
+      setShowNoteModal(true);
+      // Optionally clear the params so it doesn't trigger again
+      router.setParams({ shareText: undefined, showNoteModal: undefined });
+    }
+  }, [showNoteModalParam, shareText, router]);
   const [searchQuery, setSearchQuery] = useState("");
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);

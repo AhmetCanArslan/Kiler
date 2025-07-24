@@ -1,31 +1,39 @@
+// app/(tabs)/_layout.tsx
+
 import { Ionicons } from "@expo/vector-icons";
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useRouter } from "expo-router";
 import { useEffect } from 'react';
 import { TouchableOpacity } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { initializeDatabase } from '../../database/database';
 import HomeScreen from './home';
 import LinksScreen from './links';
 import NotesScreen from './notes';
 import PhotosScreen from './photos';
 
+import ShareIntentHandler from '../ShareIntentHandler';
 
 const Tab = createMaterialTopTabNavigator();
-
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const router = useRouter();
   useEffect(() => {
     initializeDatabase();
   }, []);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1A1D23' }} edges={['top', 'bottom', 'left', 'right']}>
+      
+      {/* 2. ADIM: Bileşeni buraya ekleyerek uygulamanın tamamında aktif olmasını sağla. */}
+      <ShareIntentHandler />
+
       <Tab.Navigator
         initialRouteName="home"
         tabBarPosition="bottom"
         screenOptions={({ route }) => ({
-          swipeEnabled: true, // Always enable swipe between tabs
+          swipeEnabled: true,
           tabBarActiveTintColor:
             route.name === "notes"
               ? "#2ee28f"
@@ -47,7 +55,7 @@ export default function TabLayout() {
             shadowOpacity: 0.15,
             shadowRadius: 8,
             elevation: 8,
-            paddingBottom: 8, // Add bottom padding for nav bar
+            paddingBottom: 8,
           },
           tabBarShowIcon: true,
           tabBarShowLabel: true,
@@ -56,7 +64,7 @@ export default function TabLayout() {
             fontWeight: '600',
             marginBottom: 2,
           },
-          indicatorStyle: { height: 0, backgroundColor: 'transparent' }, // Remove blue indicator bar
+          indicatorStyle: { height: 0, backgroundColor: 'transparent' },
         })}
       >
         <Tab.Screen
@@ -120,4 +128,3 @@ export default function TabLayout() {
     </SafeAreaView>
   );
 }
-

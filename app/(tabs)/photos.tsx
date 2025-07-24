@@ -4,22 +4,23 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
+import { copyContentUriToCache } from "../utils/fileUtils";
 
 // import ZoomableImage from "../../components/ZoomableImage";
 
@@ -30,6 +31,7 @@ const imageSize = (width - 75) / 2;
 const CARD_HEIGHT = 180; // Approximate height of a photo card (adjust if needed)
 
 function PhotosScreen() {
+  console.log('[PhotosScreen] Mounted, shareUri:', useLocalSearchParams()?.shareUri);
   // History modal state
   const [showHistory, setShowHistory] = useState(false);
   const [deletedPhotos, setDeletedPhotos] = useState<Photo[]>([]);
@@ -451,29 +453,41 @@ function PhotosScreen() {
   };
 
   useEffect(() => {
-    if (Platform.OS === "android" && shareUri) {
-      // Open description modal for shared photo
-      const now = new Date();
-      const filename = shareUri.split("/").pop() || "shared.jpg";
-      const tempPhoto = {
-        id: undefined,
-        title: `Shared_${now.getTime()}`,
-        description: "",
-        file_path: shareUri,
-        original_name: filename,
-        file_size: undefined,
-        width: undefined,
-        height: undefined,
-        mime_type: undefined,
-        tags: ["photo", "shared"],
-        taken_at: now.toISOString(),
-        is_favorite: false,
-        created_at: now.toISOString(),
-        updated_at: now.toISOString(),
-      };
-      setEditingPhoto(tempPhoto);
-      setEditDescription("");
-    }
+    const handleSharedPhoto = async () => {
+      if (Platform.OS === "android" && shareUri) {
+        try {
+          let localUri = shareUri;
+          if (localUri.startsWith("content://")) {
+            localUri = await copyContentUriToCache(localUri);
+            console.log('[PhotosScreen] Copied shared content URI to cache:', localUri);
+          }
+          const now = new Date();
+          const filename = localUri.split("/").pop() || "shared.jpg";
+          const tempPhoto = {
+            id: undefined,
+            title: `Shared_${now.getTime()}`,
+            description: "",
+            file_path: localUri,
+            original_name: filename,
+            file_size: undefined,
+            width: undefined,
+            height: undefined,
+            mime_type: undefined,
+            tags: ["photo", "shared"],
+            taken_at: now.toISOString(),
+            is_favorite: false,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString(),
+          };
+          setEditingPhoto(tempPhoto);
+          setEditDescription("");
+        } catch (error) {
+          console.error('[PhotosScreen] Error handling shared photo:', error);
+          Alert.alert('Error', 'Failed to process shared image.');
+        }
+      }
+    };
+    handleSharedPhoto();
   }, [shareUri]);
 
   return (

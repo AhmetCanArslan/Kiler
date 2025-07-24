@@ -1,20 +1,39 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
+import { copyContentUriToCache } from './utils/fileUtils';
 
 // Helper to trigger modals/input dialogs in tabs
 export const handleShareIntent = async (sharedData: any, router: any) => {
   if (!sharedData) return;
 
-  if (sharedData.type === 'photo') {
-    // Route to photos tab and pass photo URI, trigger modal
-    router.push({ pathname: '/(tabs)/photos', params: { shareUri: sharedData.data, showPhotoModal: true } });
-  } else if (sharedData.type === 'link') {
-    // Route to links tab and pass link URL, trigger modal
-    router.push({ pathname: '/(tabs)/links', params: { shareUrl: sharedData.data, showLinkModal: true } });
-  } else if (sharedData.type === 'text') {
-    // Route to notes tab and pass note content, trigger modal
-    router.push({ pathname: '/(tabs)/notes', params: { shareText: sharedData.data, showNoteModal: true } });
+  try {
+    if (sharedData.type === 'photo') {
+      // Handle content:// URI by copying to cache
+      let localUri = sharedData.data;
+      if (localUri && localUri.startsWith('content://')) {
+        try {
+          localUri = await copyContentUriToCache(localUri);
+          console.log('[handleShareIntent] Copied content URI to cache:', localUri);
+        } catch (copyErr) {
+          console.error('[handleShareIntent] Failed to copy content URI:', copyErr);
+          throw copyErr;
+        }
+      }
+      // Route to photos tab and pass local URI, trigger modal
+      router.push({ pathname: '/(tabs)/photos', params: { shareUri: localUri, showPhotoModal: true } });
+    } else if (sharedData.type === 'link') {
+      router.push({ pathname: '/(tabs)/links', params: { shareUrl: sharedData.data, showLinkModal: true } });
+    } else if (sharedData.type === 'text') {
+      router.push({ pathname: '/(tabs)/notes', params: { shareText: sharedData.data, showNoteModal: true } });
+    }
+  } catch (error) {
+    // Robust error logging
+    console.error('[handleShareIntent] Error processing shared data:', error);
+    if (error instanceof Error) {
+      // Log stack if available
+      console.error(error.stack);
+    }
   }
 };
 
@@ -22,6 +41,7 @@ export const handleShareIntent = async (sharedData: any, router: any) => {
 const ShareIntentHandler: React.FC = () => {
   const router = useRouter();
   useEffect(() => {
+    console.log('[ShareIntentHandler] Mounted');
     interface ReceivedFile {
       fileType?: string;
       weblink?: string;
@@ -33,20 +53,40 @@ const ShareIntentHandler: React.FC = () => {
     type GetReceivedFilesErrorCallback = (error: any) => void;
 
     ReceiveSharingIntent.getReceivedFiles(
-      (files: ReceivedFile[]) => {
-        if (files && files.length > 0) {
-          const file: ReceivedFile = files[0];
-          if (file.fileType && file.fileType.startsWith('image/')) {
-            handleShareIntent({ type: 'photo', data: file.weblink || file.filePath }, router);
-          } else if (file.text && file.text.startsWith('http')) {
-            handleShareIntent({ type: 'link', data: file.text }, router);
-          } else if (file.text) {
-            handleShareIntent({ type: 'text', data: file.text }, router);
+      async (files: ReceivedFile[]) => {
+        try {
+          console.log('[ShareIntentHandler] Received files:', JSON.stringify(files));
+          if (files && files.length > 0) {
+            const file: ReceivedFile = files[0];
+            console.log('[ShareIntentHandler] Processing file:', JSON.stringify(file));
+            if (file.fileType && file.fileType.startsWith('image/')) {
+              console.log('[ShareIntentHandler] Detected image');
+              await handleShareIntent({ type: 'photo', data: file.weblink || file.filePath }, router);
+            } else if (file.text && file.text.startsWith('http')) {
+              console.log('[ShareIntentHandler] Detected link');
+              await handleShareIntent({ type: 'link', data: file.text }, router);
+            } else if (file.text) {
+              console.log('[ShareIntentHandler] Detected text');
+              await handleShareIntent({ type: 'text', data: file.text }, router);
+            } else {
+              console.log('[ShareIntentHandler] Unknown file type');
+            }
+          } else {
+            console.log('[ShareIntentHandler] No files received');
+          }
+        } catch (error) {
+          // Robust error logging
+          console.error('[ShareIntentHandler] Error in getReceivedFiles callback:', error);
+          if (error instanceof Error) {
+            console.error(error.stack);
           }
         }
       },
       (error: any) => {
-        console.log('Share intent error:', error);
+        console.error('[ShareIntentHandler] Share intent error:', error);
+        if (error instanceof Error) {
+          console.error(error.stack);
+        }
       },
       'KilerShareIntent'
     );
