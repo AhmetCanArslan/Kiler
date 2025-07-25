@@ -4,17 +4,17 @@ import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Animated,
+    Dimensions,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Note, NotesService } from "../../database/notesService";
@@ -41,11 +41,13 @@ export default function NotesScreen() {
   const router = useRouter();
   // Open modal and prefill note if shareText param is present
   useEffect(() => {
-    if (Platform.OS === 'android' && showNoteModalParam === 'true' && shareText) {
+    if (showNoteModalParam === 'true' && shareText) {
       setNoteContent(shareText);
       setShowNoteModal(true);
-      // Optionally clear the params so it doesn't trigger again
-      router.setParams({ shareText: undefined, showNoteModal: undefined });
+      // Clear params after opening modal to prevent repeated triggers
+      setTimeout(() => {
+        router.setParams({ shareText: undefined, showNoteModal: undefined });
+      }, 500);
     }
   }, [showNoteModalParam, shareText, router]);
   const [searchQuery, setSearchQuery] = useState("");

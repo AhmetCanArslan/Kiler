@@ -9,9 +9,8 @@ export const handleShareIntent = async (sharedData: any, router: any) => {
 
   try {
     if (sharedData.type === 'photo') {
-      // Handle content:// URI by copying to cache
       let localUri = sharedData.data;
-      if (localUri && localUri.startsWith('content://')) {
+      if (!sharedData.skipCopy && localUri && localUri.startsWith('content://')) {
         try {
           localUri = await copyContentUriToCache(localUri);
           console.log('[handleShareIntent] Copied content URI to cache:', localUri);
@@ -20,18 +19,21 @@ export const handleShareIntent = async (sharedData: any, router: any) => {
           throw copyErr;
         }
       }
-      // Route to photos tab and pass local URI, trigger modal
-      router.push({ pathname: '/(tabs)/photos', params: { shareUri: localUri, showPhotoModal: true } });
+      setTimeout(() => {
+        router.push({ pathname: '/(tabs)/photos', params: { shareUri: localUri, showPhotoModal: 'true' } });
+      }, 300);
     } else if (sharedData.type === 'link') {
-      router.push({ pathname: '/(tabs)/links', params: { shareUrl: sharedData.data, showLinkModal: true } });
+      setTimeout(() => {
+        router.push({ pathname: '/(tabs)/links', params: { shareUrl: sharedData.data, showLinkModal: 'true' } });
+      }, 300);
     } else if (sharedData.type === 'text') {
-      router.push({ pathname: '/(tabs)/notes', params: { shareText: sharedData.data, showNoteModal: true } });
+      setTimeout(() => {
+        router.push({ pathname: '/(tabs)/notes', params: { shareText: sharedData.data, showNoteModal: 'true' } });
+      }, 300);
     }
   } catch (error) {
-    // Robust error logging
     console.error('[handleShareIntent] Error processing shared data:', error);
     if (error instanceof Error) {
-      // Log stack if available
       console.error(error.stack);
     }
   }
@@ -57,11 +59,17 @@ const ShareIntentHandler: React.FC = () => {
         try {
           console.log('[ShareIntentHandler] Received files:', JSON.stringify(files));
           if (files && files.length > 0) {
-            const file: ReceivedFile = files[0];
+            const file: any = files[0];
             console.log('[ShareIntentHandler] Processing file:', JSON.stringify(file));
-            if (file.fileType && file.fileType.startsWith('image/')) {
+            // Check both fileType and mimeType for images
+            if (
+              (file.fileType && file.fileType.startsWith('image/')) ||
+              (file.mimeType && file.mimeType.startsWith('image/'))
+            ) {
               console.log('[ShareIntentHandler] Detected image');
-              await handleShareIntent({ type: 'photo', data: file.weblink || file.filePath }, router);
+              // Use filePath directly if available, otherwise fallback to contentUri
+              const imageUri = file.filePath || file.contentUri;
+              await handleShareIntent({ type: 'photo', data: imageUri, skipCopy: true }, router);
             } else if (file.text && file.text.startsWith('http')) {
               console.log('[ShareIntentHandler] Detected link');
               await handleShareIntent({ type: 'link', data: file.text }, router);
