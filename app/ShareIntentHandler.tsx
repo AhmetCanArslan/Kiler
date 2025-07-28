@@ -10,16 +10,16 @@ export const handleShareIntent = (sharedData: any, router: any, setSharedData: (
   // 1. Set the data in the global store FIRST
   setSharedData(sharedData);
 
-  // 2. THEN, navigate to the correct screen
+  // 2. THEN, navigate to the correct screen with params
   try {
     if (sharedData.type === 'photo') {
-      // The logic for copying content URI can stay the same
-      // ...
-      router.push('/(tabs)/photos');
+      // ...existing code...
+      router.push({ pathname: '/(tabs)/photos', params: { shareUri: sharedData.data } });
     } else if (sharedData.type === 'link') {
-      router.push('/(tabs)/links');
+      router.push({ pathname: '/(tabs)/links', params: { sharedLink: sharedData.data } });
     } else if (sharedData.type === 'text') {
-      router.push('/(tabs)/notes');
+      // Pass the shared text as param so notes screen can autofill and open modal
+      router.push({ pathname: '/(tabs)/notes', params: { sharedText: sharedData.data } });
     }
   } catch (error) {
     console.error('[handleShareIntent] Error processing shared data:', error);
@@ -30,50 +30,66 @@ export const handleShareIntent = (sharedData: any, router: any, setSharedData: (
 };
 
 
-// Listen for share intents
 const ShareIntentHandler: React.FC = () => {
   const router = useRouter();
   const { setSharedData } = useSharedDataStore();
 
   useEffect(() => {
-    console.log('[ShareIntentHandler] Mounted');
-    // ... (interface definitions remain the same)
+    console.log('[ShareIntentHandler] Component mounted and listening for shares.');
 
     ReceiveSharingIntent.getReceivedFiles(
       async (files: any[]) => {
+        // LOG 1: Paylaşım olayı tetiklendi mi?
+        console.log('LOG 1: [ShareIntentHandler] getReceivedFiles callback fired!');
+        
+        // LOG 2: İşletim sisteminden gelen veri tam olarak ne?
+        console.log('LOG 2: [ShareIntentHandler] Received files object:', JSON.stringify(files, null, 2));
+
         try {
-          console.log('[ShareIntentHandler] Received files:', JSON.stringify(files));
           if (files && files.length > 0) {
             const file: any = files[0];
-            console.log('[ShareIntentHandler] Processing file:', JSON.stringify(file));
-            if (
-              (file.fileType && file.fileType.startsWith('image/')) ||
-              (file.mimeType && file.mimeType.startsWith('image/'))
-            ) {
-              console.log('[ShareIntentHandler] Detected image');
-              const imageUri = file.filePath || file.contentUri;
-              await handleShareIntent({ type: 'photo', data: imageUri, skipCopy: !!file.filePath }, router, setSharedData);
+            
+            if ((file.fileType && file.fileType.startsWith('image/')) || (file.mimeType && file.mimeType.startsWith('image/'))) {
+              // ... (image logic)
             } else if (file.text && file.text.startsWith('http')) {
-              console.log('[ShareIntentHandler] Detected link');
-              await handleShareIntent({ type: 'link', data: file.text }, router, setSharedData);
+              // ... (link logic)
             } else if (file.text) {
-              console.log('[ShareIntentHandler] Detected text');
-              await handleShareIntent({ type: 'text', data: file.text }, router, setSharedData);
-            } else {
-              console.log('[ShareIntentHandler] Unknown file type');
+              console.log('LOG 3: [ShareIntentHandler] Detected TEXT. Preparing to handle...');
+              const dataToShare = { type: 'text', data: file.text };
+        if (!files) {
+          console.error('[ShareIntentHandler] Received null files from intent!');
+          return;
+        }
+
+              
+              // LOG 4: Mağazaya ve router'a göndermeden hemen önce
+              console.log('LOG 4: [ShareIntentHandler] Calling handleShareIntent with:', dataToShare);
+            if (!file) {
+              console.error('[ShareIntentHandler] First file object is null:', files);
+              return;
             }
-          } else {
-            console.log('[ShareIntentHandler] No files received');
+              await handleShareIntent(dataToShare, router, setSharedData);
+            } else {
+              console.log('[ShareIntentHandler] Unknown file type received.');
+            }
           }
-        } catch (error) {
-          console.error('[ShareIntentHandler] Error in getReceivedFiles callback:', error);
-          if (error instanceof Error) {
-            console.error(error.stack);
+        } catch (err) {
+          console.error('[ShareIntentHandler] Error in getReceivedFiles callback:', err);
+          if (err instanceof Error) {
+            console.error('[ShareIntentHandler] Error stack:', err.stack);
           }
         }
       },
-      (error: any) => {
-        // ... (error handling remains the same)
+      (err: any) => {
+        // Ignore null intent errors (expected when app is opened normally)
+        if (err && typeof err === 'object' && err.message && err.message.includes('getAction()')) {
+          // This is the expected null intent error, ignore it
+          return;
+        }
+        console.error('[ShareIntentHandler] Share intent error callback:', err);
+        if (err instanceof Error) {
+          console.error('[ShareIntentHandler] Error stack:', err.stack);
+        }
       },
       'KilerShareIntent'
     );
@@ -81,7 +97,7 @@ const ShareIntentHandler: React.FC = () => {
       ReceiveSharingIntent.clearReceivedFiles();
     };
   }, [router, setSharedData]);
+
   return null;
 };
-
 export default ShareIntentHandler;

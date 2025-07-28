@@ -4,17 +4,17 @@ import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Animated,
+    Dimensions,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Note, NotesService } from "../../database/notesService";
@@ -36,7 +36,7 @@ const getResponsiveCardWidth = () => {
 const CARD_HEIGHT = 120; // Approximate height of a note card (adjust if needed)
 
 export default function NotesScreen() {
-  const params = useLocalSearchParams<{ shareText?: string; showNoteModal?: string }>();
+  const params = useLocalSearchParams<{ sharedText?: string; shareText?: string; showNoteModal?: string }>();
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,11 +60,17 @@ export default function NotesScreen() {
 
   // Handle share intent params robustly
   useEffect(() => {
-    const { shareText, showNoteModal: showNoteModalParam } = params;
-    if (showNoteModalParam === 'true' && shareText) {
-      setNoteContent(shareText);
+    // Prefer sharedText param (from share intent), fallback to legacy shareText
+    const sharedText = params.sharedText || params.shareText;
+    const showNoteModalParam = params.showNoteModal;
+    if (sharedText) {
+      setNoteContent(sharedText);
       setShowNoteModal(true);
       // Clear params after using them to prevent re-triggering
+      router.setParams({ sharedText: undefined, shareText: undefined, showNoteModal: undefined });
+    } else if (showNoteModalParam === 'true' && params.shareText) {
+      setNoteContent(params.shareText);
+      setShowNoteModal(true);
       router.setParams({ shareText: undefined, showNoteModal: undefined });
     }
   }, [params, router]);
