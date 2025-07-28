@@ -1,97 +1,87 @@
-// app/(tabs)/_layout.tsx
-
 import { Ionicons } from "@expo/vector-icons";
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import HomeScreen from './home';
-import LinksScreen from './links';
-import NotesScreen from './notes';
-import PhotosScreen from './photos';
-
-const Tab = createMaterialTopTabNavigator();
+import { Tabs } from 'expo-router';
+import React from 'react';
+import { View } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1A1D23' }} edges={['top', 'bottom', 'left', 'right']}>
-      <Tab.Navigator
-        initialRouteName="home"
-        tabBarPosition="bottom"
-        screenOptions={({ route }) => ({
-          swipeEnabled: true,
-          tabBarActiveTintColor:
-            route.name === "notes"
-              ? "#2ee28f"
-              : route.name === "links"
-              ? "#62abf0"
-              : route.name === "photos"
-              ? "#e4a448"
-              : "#FF6B6B",
-          tabBarInactiveTintColor: "#8E9BA2",
-          tabBarStyle: {
-            backgroundColor: "#1A1D23",
-            borderTopColor: "#2D3748",
-            borderTopWidth: 1,
-            shadowColor: "#000",
-            shadowOffset: {
-              width: 0,
-              height: -4,
-            },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 8,
-            paddingBottom: 8,
-          },
-          tabBarShowIcon: true,
-          tabBarShowLabel: true,
-          tabBarLabelStyle: {
-            fontSize: 13,
-            fontWeight: '600',
-            marginBottom: 2,
-          },
-          indicatorStyle: { height: 0, backgroundColor: 'transparent' },
-        })}
-      >
-        <Tab.Screen
-          name="home"
-          component={HomeScreen}
-          options={{
-            tabBarLabel: 'Home',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name="library" size={26} color={focused ? "#FF6B6B" : color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="notes"
-          component={NotesScreen}
-          options={{
-            tabBarLabel: 'Notes',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name="document-text" size={26} color={focused ? "#2ee28f" : color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="links"
-          component={LinksScreen}
-          options={{
-            tabBarLabel: 'Links',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name="link" size={26} color={focused ? "#62abf0" : color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="photos"
-          component={PhotosScreen}
-          options={{
-            tabBarLabel: 'Photos',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name="images" size={26} color={focused ? "#fab148" : color} />
-            ),
-          }}
-        />
-      </Tab.Navigator>
-    </SafeAreaView>
+    <Tabs
+      screenOptions={({ route }) => ({
+        headerShown: true,
+        header: () => <View style={{ height: insets.top, backgroundColor: '#0F1419' }} />,
+        headerStyle: {
+          backgroundColor: '#0F1419',
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 0,
+        },
+        tabBarActiveTintColor:
+          route.name === "notes"
+            ? "#2ee28f"
+            : route.name === "links"
+            ? "#62abf0"
+            : route.name === "photos"
+            ? "#e4a448"
+            : "#FF6B6B",
+        tabBarInactiveTintColor: "#8E9BA2",
+        
+        // --- BURAYI GÜNCELLEYİN ---
+        tabBarStyle: {
+          backgroundColor: "#1A1D23",
+          borderTopColor: "#2D3748",
+          borderTopWidth: 1,
+          paddingTop: 4, // İkonların üstündeki boşluk kalabilir, bu stilsel bir tercih.
+          // KALDIRILDI: height: 65,
+          // KALDIRILDI: paddingBottom: 8,
+        },
+        // --- GÜNCELLEME SONU ---
+
+        tabBarLabelStyle: {
+          fontSize: 13,
+          fontWeight: '600',
+        },
+      })}
+    >
+      {/* Tab.Screen'leriniz burada değişmeden kalacak */}
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name="library" size={26} color={focused ? "#FF6B6B" : color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="notes"
+        options={{
+          title: 'Notes',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name="document-text" size={26} color={focused ? "#2ee28f" : color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="links"
+        options={{
+          title: 'Links',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name="link" size={26} color={focused ? "#62abf0" : color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="photos"
+        options={{
+          title: 'Photos',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name="images" size={26} color={focused ? "#fab148" : color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }

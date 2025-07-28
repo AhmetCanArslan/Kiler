@@ -1,13 +1,15 @@
+// app/_layout.tsx
 
 console.log('=== APP ENTRY ===');
-// This is the root layout file for Expo Router apps.
-// Add the Android share intent handler here.
 
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { initializeDatabase } from "../database/database";
 import ShareIntentHandler from "./ShareIntentHandler";
+
+// 1. SafeAreaProvider'ı import edin
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
 
@@ -24,13 +26,14 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+    // 2. Tüm uygulamayı SafeAreaProvider ile sarmalayın
+    <SafeAreaProvider>
       <StatusBar style="auto" />
       <ShareIntentHandler />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }

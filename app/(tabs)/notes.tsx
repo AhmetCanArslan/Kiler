@@ -4,17 +4,17 @@ import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Dimensions,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { CommonModal } from "../../components/CommonModal";
 import { Note, NotesService } from "../../database/notesService";
@@ -22,13 +22,13 @@ import { Note, NotesService } from "../../database/notesService";
 const { width: screenWidth } = Dimensions.get('window');
 const getResponsiveCardWidth = () => {
   if (screenWidth < 768) {
-    // Mobile: tek sütun
-    return screenWidth - 40; // 20px padding her tarafta
+    // Mobile: single column
+    return screenWidth - 40; // 20px padding on each side
   } else if (screenWidth < 1024) {
-    // Tablet: iki sütun
+    // Tablet: two columns
     return (screenWidth - 60) / 2; // 20px padding + 20px gap
   } else {
-    // Desktop: üç sütun
+    // Desktop: three columns
     return (screenWidth - 80) / 3; // 20px padding + 20px gaps
   }
 };
@@ -36,20 +36,9 @@ const getResponsiveCardWidth = () => {
 const CARD_HEIGHT = 120; // Approximate height of a note card (adjust if needed)
 
 export default function NotesScreen() {
-  // Handle share intent params
-  const { shareText, showNoteModal: showNoteModalParam } = useLocalSearchParams<{ shareText?: string; showNoteModal?: string }>();
+  const params = useLocalSearchParams<{ shareText?: string; showNoteModal?: string }>();
   const router = useRouter();
-  // Open modal and prefill note if shareText param is present
-  useEffect(() => {
-    if (showNoteModalParam === 'true' && shareText) {
-      setNoteContent(shareText);
-      setShowNoteModal(true);
-      // Clear params after opening modal to prevent repeated triggers
-      setTimeout(() => {
-        router.setParams({ shareText: undefined, showNoteModal: undefined });
-      }, 500);
-    }
-  }, [showNoteModalParam, shareText, router]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +57,18 @@ export default function NotesScreen() {
   // History modal state
   const [showHistory, setShowHistory] = useState(false);
   const [deletedNotes, setDeletedNotes] = useState<Note[]>([]);
+
+  // Handle share intent params robustly
+  useEffect(() => {
+    const { shareText, showNoteModal: showNoteModalParam } = params;
+    if (showNoteModalParam === 'true' && shareText) {
+      setNoteContent(shareText);
+      setShowNoteModal(true);
+      // Clear params after using them to prevent re-triggering
+      router.setParams({ shareText: undefined, showNoteModal: undefined });
+    }
+  }, [params, router]);
+
 
   // Handle screen dimension changes
   useEffect(() => {
@@ -122,11 +123,10 @@ export default function NotesScreen() {
 
       setNotes(sortedNotes);
     } catch (error) {
-      // Only show error if the database operation itself fails
       if (error instanceof Error && error.message && !error.message.includes('no such table')) {
           Alert.alert('Error', 'Failed to load notes');
       }
-      setNotes([]); // Ensure empty state
+      setNotes([]); // Ensure empty state on error
     } finally {
       if (isInitial) {
         setLoading(false);
@@ -155,11 +155,10 @@ export default function NotesScreen() {
     }
   }, [searchQuery, loadNotes, searchNotes]);
 
-  // Refresh notes when screen comes into focus (e.g., after adding from home screen)
   useFocusEffect(
     useCallback(() => {
       if (!searchQuery.trim()) {
-        loadNotes(false); // Don't show loading indicator on focus refresh
+        loadNotes(false);
       }
     }, [loadNotes, searchQuery])
   );
@@ -179,14 +178,12 @@ export default function NotesScreen() {
   const animateFavoriteMove = useCallback(async (oldIdx: number, newIdx: number, noteId: number) => {
     const anim = getNoteAnim(noteId);
 
-    // 1. Fade out the item
     await new Promise(res => Animated.timing(anim.opacity, {
       toValue: 0,
       duration: 120,
       useNativeDriver: true,
     }).start(() => res(null)));
 
-    // 2. Update list immediately
     setNotes(prevNotes => {
       const newNotes = [...prevNotes];
       const [movedNote] = newNotes.splice(oldIdx, 1);
@@ -194,7 +191,6 @@ export default function NotesScreen() {
       return newNotes;
     });
 
-    // 3. Slide down animation for items that need to move
     await new Promise(resolve => {
       const slideAnimations = notes
         .filter((note, index) => note.id !== noteId && index >= newIdx)
@@ -215,7 +211,6 @@ export default function NotesScreen() {
       }
     });
 
-    // 4. Fade in the favorite item at new position
     anim.translateY.setValue(0);
     await new Promise(res => Animated.timing(anim.opacity, {
       toValue: 1,
@@ -272,7 +267,6 @@ export default function NotesScreen() {
 
       handleCloseModal();
 
-      // Create the new note object
       const newNote = {
         id: newNoteId,
         title: noteTitle.trim(),
@@ -283,7 +277,6 @@ export default function NotesScreen() {
         tags: []
       };
 
-      // Add animation for the new note
       const newAnim = {
         opacity: new Animated.Value(0),
         translateY: new Animated.Value(0),
@@ -292,22 +285,19 @@ export default function NotesScreen() {
       };
       setNoteAnims(prev => ({ ...prev, [newNoteId]: newAnim }));
 
-      // Update the list by adding the new note at the top (it's not favorited so goes after favorites)
       setNotes(prevNotes => {
         const favoriteNotes = prevNotes.filter(note => note.is_favorite);
         const regularNotes = prevNotes.filter(note => !note.is_favorite);
         return [...favoriteNotes, newNote, ...regularNotes];
       });
 
-      // Sequential add animation: slide down others → fade in new item
       setTimeout(async () => {
         const anim = getNoteAnim(newNoteId);
         if (anim) {
-          // 1. Slide down items that are below the new item
           await new Promise(resolve => {
             const currentFavoriteCount = notes.filter(note => note.is_favorite).length;
             const slideAnimations = notes
-              .filter((note, index) => index >= currentFavoriteCount) // Items after favorites
+              .filter((note, index) => index >= currentFavoriteCount)
               .map(note => {
                 const noteAnim = getNoteAnim(note.id as number);
                 noteAnim.translateY.setValue(-CARD_HEIGHT);
@@ -325,7 +315,6 @@ export default function NotesScreen() {
             }
           });
 
-          // 2. Fade in the new item
           Animated.timing(anim.opacity, {
             toValue: 1,
             duration: 120,
@@ -338,7 +327,7 @@ export default function NotesScreen() {
       console.error('Error saving note:', error);
       Alert.alert("Error", "Failed to save note. Please try again.");
     }
-  }, [noteTitle, noteContent, loadNotes, getNoteAnim]);
+  }, [noteTitle, noteContent, loadNotes, getNoteAnim, notes]);
 
   const handleCloseModal = () => {
     setShowNoteModal(false);
@@ -348,6 +337,7 @@ export default function NotesScreen() {
 
   const handleEditNote = (note: Note) => {
     setEditingNote(note);
+    setEditNoteTitle(note.title); // Pre-fill title for editing
     setEditNoteContent(note.content);
     setShowEditModal(true);
   };
@@ -386,7 +376,6 @@ export default function NotesScreen() {
 
       if (success) {
         handleCloseEditModal();
-        // Refresh the notes list
         loadNotes(false);
       } else {
         Alert.alert("Error", "Failed to update note. Please try again.");
@@ -400,7 +389,6 @@ export default function NotesScreen() {
   const handleCopyNote = useCallback(async (note: Note) => {
     try {
       await Clipboard.setStringAsync(note.content);
-      // Show a simple toast-like alert that dismisses automatically
       Alert.alert("Copied to clipboard", "", [{ text: "OK" }], { cancelable: true });
     } catch (error) {
       console.error('Error copying note:', error);
@@ -419,7 +407,6 @@ export default function NotesScreen() {
           style: 'destructive',
           onPress: async () => {
             const anim = getNoteAnim(noteId);
-            const noteIndex = notes.findIndex(n => n.id === noteId);
             await new Promise(res => Animated.parallel([
               Animated.timing(anim.opacity, {
                 toValue: 0,
@@ -433,7 +420,6 @@ export default function NotesScreen() {
               })
             ]).start(() => res(null)));
             try {
-              // Get deleted note object before removing
               const deletedNote = notes.find(note => note.id === noteId);
               await NotesService.deleteNote(noteId);
               await new Promise(resolve => {
@@ -449,7 +435,6 @@ export default function NotesScreen() {
                 delete newAnims[noteId];
                 return newAnims;
               });
-              // Add to deletedNotes history
               if (deletedNote) setDeletedNotes(prev => [deletedNote, ...prev]);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete note');
@@ -464,7 +449,7 @@ export default function NotesScreen() {
   }, [getNoteAnim, notes]);
 
   const memoizedRenderItem = useMemo(() => ({ item }: { item: Note }) => {
-    const anim = noteAnims[item.id as number] || { opacity: 1, translateY: 0, translateX: 0, scaleY: 1 };
+    const anim = noteAnims[item.id as number] || { opacity: new Animated.Value(1), translateY: new Animated.Value(0), translateX: new Animated.Value(0), scaleY: new Animated.Value(1) };
     return (
       <Animated.View
         style={{
@@ -519,13 +504,12 @@ export default function NotesScreen() {
         </TouchableOpacity>
       </Animated.View>
     );
-  }, [noteAnims, toggleFavorite, handleCopyNote, handleEditNote, handleDeleteNote]);
+  }, [noteAnims, cardWidth, toggleFavorite, handleCopyNote, handleEditNote, handleDeleteNote, handlePreviewNote]);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1 }}>
         <View style={styles.header}>
-          {/* History Button */}
           <TouchableOpacity style={{ marginRight: 10 }} onPress={() => setShowHistory(true)}>
             <Ionicons name="time" size={24} color="#68D391" />
           </TouchableOpacity>
@@ -543,41 +527,33 @@ export default function NotesScreen() {
             <Ionicons name="add" size={28} color="#fff" />
           </TouchableOpacity>
         </View>
-        {/* History Modal */}
+        
         {showHistory && (
-          <View style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.95)',
-            zIndex: 999,
-            padding: 20,
-          }}>
+          <View style={styles.historyOverlay}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ color: '#68D391', fontSize: 22, fontWeight: 'bold', flex: 1 }}>Deleted Notes</Text>
+              <Text style={styles.historyTitle}>Deleted Notes</Text>
               <TouchableOpacity onPress={() => setShowHistory(false)}>
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
             {deletedNotes.length === 0 ? (
-              <Text style={{ color: '#A0AEC0', fontSize: 16, textAlign: 'center', marginTop: 40 }}>No deleted notes yet.</Text>
+              <Text style={styles.historyEmptyText}>No deleted notes yet.</Text>
             ) : (
               <Animated.FlatList
                 data={deletedNotes}
                 keyExtractor={item => item.id?.toString() || Math.random().toString()}
                 renderItem={({ item }) => (
-                  <View style={{ backgroundColor: '#1A202C', borderRadius: 16, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: '#2D3748' }}>
-                    <Text style={{ color: '#68D391', fontWeight: 'bold', fontSize: 16 }}>{item.title}</Text>
-                    <Text style={{ color: '#A0AEC0', fontSize: 12, marginTop: 4 }} numberOfLines={2}>{item.content}</Text>
-                    <Text style={{ color: '#8E9BA2', fontSize: 10, marginTop: 8 }}>Deleted at: {new Date().toLocaleString()}</Text>
+                  <View style={styles.historyCard}>
+                    <Text style={styles.historyCardTitle}>{item.title}</Text>
+                    <Text style={styles.historyCardContent} numberOfLines={2}>{item.content}</Text>
+                    <Text style={styles.historyCardDate}>Deleted at: {new Date().toLocaleString()}</Text>
                   </View>
                 )}
               />
             )}
           </View>
         )}
+
         <View style={styles.content}>
           {loading ? (
             <View style={styles.loadingContainer} />
@@ -597,15 +573,6 @@ export default function NotesScreen() {
               numColumns={screenWidth >= 768 ? (screenWidth >= 1024 ? 3 : 2) : 1}
               key={screenWidth >= 768 ? (screenWidth >= 1024 ? 'three' : 'two') : 'one'}
               columnWrapperStyle={screenWidth >= 768 ? styles.row : undefined}
-              ListEmptyComponent={() => (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="reader-outline" size={64} color="#4A5568" />
-                  <Text style={styles.emptyTitle}>No Notes Found</Text>
-                  <Text style={styles.emptyText}>
-                    {searchQuery ? "Try a different search term" : "Create your first note to get started"}
-                  </Text>
-                </View>
-              )}
               contentContainerStyle={{ paddingBottom: 20 }}
             />
           )}
@@ -641,7 +608,6 @@ export default function NotesScreen() {
           value={noteContent}
           onChangeText={setNoteContent}
           multiline
-          numberOfLines={10}
           textAlignVertical="top"
         />
 
@@ -684,7 +650,6 @@ export default function NotesScreen() {
           value={editNoteContent}
           onChangeText={setEditNoteContent}
           multiline
-          numberOfLines={10}
           textAlignVertical="top"
         />
 
@@ -819,9 +784,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8E9BA2",
   },
-  shareButton: {
-    padding: 8,
-  },
   favoriteButton: {
     padding: 8,
   },
@@ -839,10 +801,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 50,
-  },
-  loadingText: {
-    color: "#A0AEC0",
-    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,
@@ -903,7 +861,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 2,
   },
-  // Modal styles
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -982,12 +939,6 @@ const styles = StyleSheet.create({
   previewScrollContent: {
     paddingBottom: 10,
   },
-  previewContent: {
-    flex: 1,
-    backgroundColor: "transparent",
-    paddingHorizontal: 0,
-    paddingVertical: 10,
-  },
   previewText: {
     color: "#E8E8E8",
     fontSize: 16,
@@ -1009,5 +960,50 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
     marginBottom: 5,
+  },
+  historyOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    zIndex: 999,
+    padding: 20,
+  },
+  historyTitle: {
+    color: '#68D391',
+    fontSize: 22,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  historyEmptyText: {
+    color: '#A0AEC0',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 40,
+  },
+  historyCard: {
+    backgroundColor: '#1A202C',
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2D3748',
+  },
+  historyCardTitle: {
+    color: '#68D391',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  historyCardContent: {
+    color: '#A0AEC0',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  historyCardDate: {
+    color: '#8E9BA2',
+    fontSize: 10,
+    marginTop: 8,
   },
 });

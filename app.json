@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "kiler",
     "name": "Kiler",
     "slug": "Kiler",
     "version": "1.0.0",
