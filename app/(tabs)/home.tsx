@@ -4,21 +4,22 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    Alert,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommonModal } from "../../components/CommonModal";
 import { getDatabaseStats } from "../../database/database";
 import { LinksService } from "../../database/linksService";
 import { NotesService } from "../../database/notesService";
 import { PhotosService } from "../../database/photosService";
+import styles from "../styles/homeStyles";
 
 interface RecentItem {
   id: number;
@@ -58,6 +59,7 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
   });
 
   const { shareText } = useLocalSearchParams<{ shareText?: string }>();
+  const insets = useSafeAreaInsets();
 
   const loadData = useCallback(async () => {
     // Skip database operations on web platform
@@ -373,7 +375,7 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
   }, [shareText]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingBottom: Math.max(insets.bottom, 12) }]}>
       {settingsButton}
       <View style={{ flex: 1 }}>
         <ScrollView style={styles.content} scrollEnabled={false}>
@@ -584,195 +586,3 @@ export default function HomeScreen({ settingsButton }: HomeScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0F1419",
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    paddingVertical: 20,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#F7FAFC",
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#A0AEC0",
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 30,
-  },
-  statCard: {
-    backgroundColor: "#1A202C",
-    borderRadius: 16,
-    padding: 15,
-    alignItems: "center",
-    flex: 1,
-    marginHorizontal: 3,
-    borderWidth: 1,
-    borderColor: "#2D3748",
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#F7FAFC",
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#A0AEC0",
-    marginTop: 4,
-  },
-  section: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#F7FAFC",
-    marginBottom: 15,
-  },
-  itemCard: {
-    backgroundColor: "#1A202C",
-    borderRadius: 16,
-    padding: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#2D3748",
-  },
-  itemIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-    // Extra contrast for modal overlay
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 6,
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.18)',
-  },
-  itemContent: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: 16,
-    color: "#F7FAFC",
-    fontWeight: "500",
-  },
-  itemDate: {
-    fontSize: 14,
-    color: "#A0AEC0",
-    marginTop: 2,
-  },
-  quickActions: {
-    marginBottom: 30,
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  extraActionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  actionCard: {
-    backgroundColor: "#1A202C",
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    width: "48%",
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#2D3748",
-  },
-  actionText: {
-    color: "#F7FAFC",
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  // Modal styles
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#F7FAFC",
-  },
-  closeButton: {
-    padding: 4,
-  },
-  titleInput: {
-    backgroundColor: "#2D3748",
-    borderRadius: 12,
-    padding: 15,
-    color: "#F7FAFC",
-    fontSize: 16,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#4A5568",
-  },
-  contentInput: {
-    backgroundColor: "#2D3748",
-    borderRadius: 12,
-    padding: 15,
-    color: "#F7FAFC",
-    fontSize: 16,
-    minHeight: 120,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#4A5568",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: "#2D3748",
-    borderRadius: 12,
-    padding: 15,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#4A5568",
-  },
-  cancelButtonText: {
-    color: "#A0AEC0",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: "#68D391",
-    borderRadius: 12,
-    padding: 15,
-    alignItems: "center",
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});

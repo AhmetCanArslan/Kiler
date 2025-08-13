@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom > 0 ? insets.bottom : 10;
 
   return (
     <Tabs
@@ -27,18 +28,15 @@ export default function TabLayout() {
             ? "#e4a448"
             : "#FF6B6B",
         tabBarInactiveTintColor: "#8E9BA2",
-        
-        // --- BURAYI GÜNCELLEYİN ---
         tabBarStyle: {
           backgroundColor: "#1A1D23",
           borderTopColor: "#2D3748",
           borderTopWidth: 1,
-          paddingTop: 4, // İkonların üstündeki boşluk kalabilir, bu stilsel bir tercih.
-          // KALDIRILDI: height: 65,
-          // KALDIRILDI: paddingBottom: 8,
+          paddingTop: 4,
+          // move icons above system nav bar
+          height: 60 + bottomInset,
+          paddingBottom: bottomInset,
         },
-        // --- GÜNCELLEME SONU ---
-
         tabBarLabelStyle: {
           fontSize: 13,
           fontWeight: '600',
