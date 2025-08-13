@@ -1,6 +1,5 @@
 {
   "expo": {
-    "scheme": "kiler",
     "name": "Kiler",
     "slug": "Kiler",
     "version": "1.0.0",
@@ -28,26 +27,7 @@
       "backgroundColor": "#0F1419",
       "edgeToEdgeEnabled": true,
       "package": "com.ahmetcanarslan.kiler",
-      "intentFilters": [
-        {
-          "action": "SEND",
-          "data": [
-            {
-              "mimeType": "image/*"
-            },
-            {
-              "mimeType": "text/plain"
-            },
-            {
-              "mimeType": "text/uri-list"
-            }
-          ],
-          "category": ["DEFAULT"],
-          "autoVerify": true,
-          "scheme": "kiler",
-          "pathPrefix": "/share"
-        }
-      ]
+      "launchMode": "singleTask"
     },
     "web": {
       "bundler": "metro",
@@ -65,7 +45,8 @@
           "backgroundColor": "#0F1419"
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "react-native-receive-sharing-intent"
     ],
     "experiments": {
       "typedRoutes": true
